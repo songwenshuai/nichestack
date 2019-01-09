@@ -93,6 +93,22 @@ lan8742_Object_t LAN8742;
 
 uint32_t netif_is_link_up = 0;
 
+extern void ETH_DMATxDescListInit(ETH_HandleTypeDef *heth);
+extern void ETH_DMARxDescListInit(ETH_HandleTypeDef *heth);
+
+#define EETH_DEBUG 1
+
+#ifdef NICHE
+extern char mac_addr[6];
+extern uint32_t ifacess;
+extern struct net netstatic[STATIC_NETS];
+
+extern void hexdump(void * pio, void * buffer, unsigned len);
+extern int input_ippkt(uint8_t *addr, int RxLen);
+#else
+char mac_addr[6] = {01,02,55,66,88,99};
+#endif
+
 /* Private function prototypes -----------------------------------------------*/
 
 int32_t ETH_PHY_IO_Init(void);
@@ -108,25 +124,6 @@ lan8742_IOCtx_t  LAN8742_IOCtx = {ETH_PHY_IO_Init,
                                   ETH_PHY_IO_GetTick};
 
 /* Private functions ---------------------------------------------------------*/
-void ethernet_link_thread( void const * argument );
-
-
-extern void ETH_DMATxDescListInit(ETH_HandleTypeDef *heth);
-extern void ETH_DMARxDescListInit(ETH_HandleTypeDef *heth);
-
-#ifdef NICHE
-extern void hexdump(void * pio, void * buffer, unsigned len);
-extern int input_ippkt(uint8_t *addr, int RxLen);
-#endif
-
-char mac_addr[6] = {01,02,55,66,88,99};
-#define EETH_DEBUG 1
-
-#ifdef NICHE
-extern char mac_addr[6];
-extern uint32_t ifacess;
-extern struct net netstatic[STATIC_NETS];
-#endif
 
 #define APP_CFG_ETHIF_TASK_PRIO                           4u
 #define APP_CFG_ETHLINK_TASK_PRIO                         5u

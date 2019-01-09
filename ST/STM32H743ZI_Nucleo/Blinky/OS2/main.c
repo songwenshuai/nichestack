@@ -45,10 +45,13 @@
 
 #include  "../app_cfg.h"
 #include  "bsp_usart.h"
+#include  "bsp_pb.h"
 #include  "printf.h"
+#include  "button.h"
 
 extern UART_HandleTypeDef huart3;
 extern void ENET_Configuration(void);
+
 /*
 *********************************************************************************************************
 *                                            LOCAL DEFINES
@@ -63,7 +66,9 @@ extern void ENET_Configuration(void);
 */
 
 static  OS_STK  StartupTaskStk[APP_CFG_STARTUP_TASK_STK_SIZE];
+static  OS_STK  BtnTaskStk[APP_CFG_Btn_TASK_STK_SIZE];
 
+Button_t Button;
 
 /*
 *********************************************************************************************************
@@ -72,9 +77,17 @@ static  OS_STK  StartupTaskStk[APP_CFG_STARTUP_TASK_STK_SIZE];
 */
 
 static  void  StartupTask (void  *p_arg);
+static  void  BtnTask (void *p_arg);
+
 static  void  MPU_Config(void);
 char  UART_read(void);
 void  UART_write(char ch);
+
+uint8_t Read_Btn1_Level(void);
+void Btn1_Dowm_CallBack(void *btn);
+void Btn1_Double_CallBack(void *btn);
+void Btn1_Long_CallBack(void *btn);
+
 /*
 *********************************************************************************************************
 *                                                main()
@@ -150,6 +163,9 @@ static  void  StartupTask (void *p_arg)
 {
    (void)p_arg;
 
+#if OS_TASK_NAME_EN > 0u
+    CPU_INT08U  os_err;
+#endif
 
     OS_TRACE_INIT();                                            /* Initialize the OS Trace recorder                     */
 
@@ -158,6 +174,29 @@ static  void  StartupTask (void *p_arg)
     MX_USART3_UART_Init();
 
     BSP_LED_Init();                                             /* Initialize LEDs                                      */
+    BSP_PB_Init(BUTTON_USER,BUTTON_MODE_GPIO);
+    
+    Button_Create("Button", &Button, Read_Btn1_Level, GPIO_PIN_SET);
+    Button_Attach(&Button, BUTTON_DOWM, Btn1_Dowm_CallBack);                    //µ¥»÷
+    Button_Attach(&Button, BUTTON_DOUBLE, Btn1_Double_CallBack);                //Ë«»÷
+    Button_Attach(&Button, BUTTON_LONG, Btn1_Long_CallBack);                    //³¤°´
+
+    Get_Button_Event(&Button);
+    OSTaskCreateExt( BtnTask,                               /* Create the startup task                              */
+                     0,
+                    &BtnTaskStk[APP_CFG_Btn_TASK_STK_SIZE - 1u],
+                     APP_CFG_BTN_TASK_PRIO,
+                     APP_CFG_BTN_TASK_PRIO,
+                    &BtnTaskStk[0u],
+                     APP_CFG_Btn_TASK_STK_SIZE,
+                     0u,
+                    (OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR));
+
+#if OS_TASK_NAME_EN > 0u
+    OSTaskNameSet(         APP_CFG_BTN_TASK_PRIO,
+                  (INT8U *)"Btn Task",
+                           &os_err);
+#endif
     ENET_Configuration();
 #if (OS_TASK_STAT_EN > 0u)
     OSStatInit();                                               /* Determine CPU capacity                               */
@@ -173,6 +212,14 @@ static  void  StartupTask (void *p_arg)
     }
 }
 
+static  void  BtnTask (void *p_arg)
+{
+    (void)p_arg;
+    while (DEF_TRUE) {                                          /* Task body, always written as an infinite loop.       */
+        Button_Process();
+        OSTimeDly(20);
+    }
+}
 /**
   * @brief  Configure the MPU attributes 
   * @param  None
@@ -245,4 +292,44 @@ char UART_read(void)
   HAL_UART_Receive(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
 
   return ch;
+}
+
+/**
+  * @brief  TASK Thread
+  * @param  thread not used
+  * @retval None
+  */
+uint8_t Read_Btn1_Level(void)
+{
+  return BSP_PB_GetState(BUTTON_USER);
+}
+
+/**
+  * @brief  TASK Thread
+  * @param  thread not used
+  * @retval None
+  */
+void Btn1_Dowm_CallBack(void *btn)
+{
+  PRINT_INFO("Button Single click!");
+}
+
+/**
+  * @brief  TASK Thread
+  * @param  thread not used
+  * @retval None
+  */
+void Btn1_Double_CallBack(void *btn)
+{
+  PRINT_INFO("Button double click!");
+}
+
+/**
+  * @brief  TASK Thread
+  * @param  thread not used
+  * @retval None
+  */
+void Btn1_Long_CallBack(void *btn)
+{
+  PRINT_INFO("Button Long press!");
 }

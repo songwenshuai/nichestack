@@ -1802,6 +1802,12 @@
                     <name>$PROJ_DIR$\..\..\..\..\BSP\STM32H743ZI_Nucleo\bsp_os.h</name>
                 </file>
                 <file>
+                    <name>$PROJ_DIR$\..\..\..\..\BSP\STM32H743ZI_Nucleo\bsp_pb.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\..\..\..\BSP\STM32H743ZI_Nucleo\bsp_pb.h</name>
+                </file>
+                <file>
                     <name>$PROJ_DIR$\..\..\..\..\BSP\STM32H743ZI_Nucleo\bsp_usart.c</name>
                 </file>
                 <file>
@@ -1826,6 +1832,12 @@
                     <name>OS2</name>
                     <file>
                         <name>$PROJ_DIR$\..\app_hooks.c</name>
+                    </file>
+                    <file>
+                        <name>$PROJ_DIR$\..\button.c</name>
+                    </file>
+                    <file>
+                        <name>$PROJ_DIR$\..\button.h</name>
                     </file>
                     <file>
                         <name>$PROJ_DIR$\..\ethernetif.c</name>

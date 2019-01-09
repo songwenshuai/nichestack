@@ -1,0 +1,61 @@
+
+
+IP Multicast changes have been made to files in the following directories:
+
+INET
+IPMC
+MISCLIB
+TCP
+DOSLIB
+
+All the changes are contained within a #define IP_MULTICAST.  This flag 
+must be set in the ipport.h_h file. 
+In the makefile, the LIB directive needs to include IPMCLIB.
+A clean build needs to be done to include the IP Multicast capability.
+
+Steps for building IP Multicast
+----------------------------------
+
+1.  Pkunzip tcpsrc16.zip and do a "nmake clean" in the dosmain directory 
+followed by an nmake in the dosmain directory.
+
+2.  Execute webport and run the "iface" command.  This should show the
+Multicast address 224.0.0.1 on every interface that has multicast capability
+configured on it. 
+
+3.  Multicast capability is configured on an interface by compiling in an 
+address for n_mcastlist routine in the nets interface structure.  In the
+default build, this routine is defined in dosmain\main.c.  The default 
+routine currently does nothing.  The idea behind this routine is to 
+have it be defined in the driver.  The driver will then use in_multi
+structure (as passed into n_mcastlist routine) to set ethernet multicast
+addresses. To not have multicast capability on an interface, this routine
+must be set to zero.
+
+4. u_mctest.c file in the inet directory gives a sample of how to set
+and get IP options related to Multicasting.  The "ipmc\ipmult.h" file is
+used to convert from BSD socket interface into an interface that is
+currently supported in the InterNiche stack.  
+
+5. In the menuing interface, it is possible to execute u_mctest against
+a peer InterNiche TCP/IP stack that is also IP multicast enabled
+and the two sides can send and receive IP multicast packets.
+The test program uses blocking sendto and non-blocking recvfrom udp
+socket calls. 
+It is best to type in u_mctest and hit the return key simultaneously
+on both menuing interfaces.
+
+6. In this build, IP multicast packets are mapped to Ethernet broadcast
+addresses in et_arp.c.  The implementation of mapping IP multicast to
+Ethernet multicast is now under an #ifdef ETHMCAST in et_arp.c.
+When the porting engineer has defined n_mcastlist in the ethernet driver
+and is ready to implement IP multicast mapping to Ethernet multicast
+mapping, this #ifdef ETHMCAST must be defined. 
+
+7. The test module, ipmc\u_mctest.c, has a new flag defined- 
+IP_MULTI_UMCTEST.  This flag can be used to conditionally compile the test
+program.  If the supporting engineer does not wish to use this test program,
+the #define for this flag must be removed from ipmc/u_mctest.c.  In addition
+the project directory file that invokes u_mctest_init must be altered to
+conditionally compile u_mctest_init,that is, the call to this routine 
+must be placed within a #ifdef IP_MULTI_UMCTEST.

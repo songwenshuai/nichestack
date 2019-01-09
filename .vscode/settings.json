@@ -1,7 +1,8 @@
 {
     "files.associations": {
         "app_cfg.h\u0000_cfg.h": "c",
-        "bsp_led.h": "c"
+        "bsp_led.h": "c",
+        "bsp_pb.h": "c"
     },
     "files.encoding": "gb2312"
 }
