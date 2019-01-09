@@ -1,0 +1,19 @@
+Backup of Blinky.ewp
+Blinky.ewt
+*.o
+*.xcl
+*.pbi
+*.crun
+*.dbgdt
+*.dnx
+*.bat
+*.ps1
+*.wsdt
+*.out
+*.map
+*.pbd
+*.sim
+*.linf
+*.browse
+*.tmp
+ST/STM32H743ZI_Nucleo/Blinky/OS2/IAR/settings/Blinky_EncodingOverride.xml
