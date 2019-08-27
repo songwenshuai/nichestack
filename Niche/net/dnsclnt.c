@@ -263,6 +263,9 @@ int
 dns_query_type(char * name, char type, ip_addr ipaddr,
                unsigned long ttl, struct dns_querys ** dns_ptr)
 {
+   USE_ARG(ttl);
+   USE_ARG(ipaddr);
+   
    struct dns_querys *  dns_entry;
    int   e;
 
@@ -313,9 +316,6 @@ dns_query_type(char * name, char type, ip_addr ipaddr,
       return ENP_SEND_PENDING;
    else  /* some kind of error */
       return e;
-
-   USE_ARG(ttl);
-   USE_ARG(ipaddr);
 }
 
 

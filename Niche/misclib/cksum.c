@@ -11,7 +11,7 @@
 #endif
 
 #ifndef C_CHECKSUM
-unsigned short asm_cksum (void *, unsigned);
+unsigned short acksum (void *, unsigned);
 #endif
 
   
@@ -97,7 +97,7 @@ cksum (void *ptr, unsigned count)
          return (ccksum(ptr, count));
  #ifndef C_CHECKSUM
       case 2:
-         return (asm_cksum(ptr, count));
+         return (acksum(ptr, count));
 #endif
    }
 }

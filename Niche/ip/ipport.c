@@ -56,7 +56,7 @@ prep_ifaces(int ifaces_found)
 
    ifNumber = ifaces_found;   /* set global interface counter */
 
-   initmsg("prepped %u interface%s, initializing...\n", 
+   printf("prepped %u interface%s, initializing...\n", 
       ifaces_found, ifaces_found==1?"":"s");
 
    return ifaces_found;
@@ -88,11 +88,11 @@ int      net_system_exit   =  FALSE;
 void
 netexit(int err)      /* exit error level */
 {
+   USE_ARG(err);
    net_system_exit = TRUE; /* set flag for shutting down */
    ip_exit();  /* do the exit_hook()ed stuff */
 
    PORT_EXIT_FUNC(err);    /* should not return! */
-   USE_ARG(err);
 }
 
 

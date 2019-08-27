@@ -253,7 +253,6 @@ int glog_process_args(log_data_t *p)
 
 int glog_app(void * pio)
 {
-   int i;
    char *buf;
    buf = (char *) ((GEN_IO)pio)->inbuf;
    ns_printf(pio,"%s\n", buf);
@@ -283,6 +282,7 @@ int glog_app(void * pio)
       return(-1);
    }   
 #if 0
+   int i;
    for(i = 0; i < p_global_log->argc; i++)
    {
       ns_printf(pio, "%s ", p_global_log->argv[i]);

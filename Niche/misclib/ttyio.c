@@ -72,7 +72,7 @@ char     digits[] =  {"0123456789ABCDEF"};
 #ifdef PRINTF_STDARG
 int doprint(char *target, unsigned tlen, CONST char *sp, va_list va);
 #else
-int doprint(char *target, unsigned tlen, char *sp, int *vp);
+int doprint(char *target, unsigned tlen, CONST char *sp, int *vp);
 #endif
 
 extern void  dputchar(int chr);         /* port-defined putchar substitue */

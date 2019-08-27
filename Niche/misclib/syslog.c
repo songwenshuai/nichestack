@@ -1475,7 +1475,6 @@ int prep_syslog(void)
 #ifdef USE_SYSLOG_QUEUE
 void syslog_handler(long foo)
 {
-   int ret_value;
    int facility;
    syslog_info *tmp;
    syslog_item_st *sl_item = NULL;
@@ -1512,7 +1511,7 @@ void syslog_handler(long foo)
          vfwrite(sl_item->outbuf, 1, strlen(sl_item->outbuf), tmp->fp);
          vfwrite(LOG_CRLF, 1, 2, tmp->fp);
       }   
-      ret_value = sl_udpsend(tmp, sl_item->outbuf, strlen(sl_item->outbuf));
+      sl_udpsend(tmp, sl_item->outbuf, strlen(sl_item->outbuf));
       npfree(sl_item->outbuf); 
       npfree(sl_item); 
    }

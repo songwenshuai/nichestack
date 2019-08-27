@@ -98,11 +98,13 @@ void  BSP_ClkInit (void)
     while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {
         ;
     }
+    /* Enable D2 domain SRAM1 Clock (0x30000000 AXI)*/
+    __HAL_RCC_D2SRAM1_CLK_ENABLE(); 
     /* Enable D2 domain SRAM3 Clock (0x30040000 AXI)*/
     __HAL_RCC_D2SRAM3_CLK_ENABLE();
                                                                 /* Enable HSE Osc and activate PLL with HSE as source   */
     RCC_OscInit.OscillatorType = RCC_OSCILLATORTYPE_HSE;        /* HSE = 8 MHz                                          */
-    RCC_OscInit.HSEState       = RCC_HSE_BYPASS;
+    RCC_OscInit.HSEState       = RCC_HSE_ON;
     RCC_OscInit.HSIState       = RCC_HSI_OFF;
     RCC_OscInit.CSIState       = RCC_CSI_OFF;
     RCC_OscInit.PLL.PLLState   = RCC_PLL_ON;

@@ -140,6 +140,22 @@ struct vfs_file   mdlist[] =
 #endif
       &mdio,
    },
+   {  &mdlist[3],    /* list link */
+      "test100M",        /* name of file */
+      VF_NODATA,      /* flags (compression, etc) */
+      NULL,          /* name of data array */
+      MEMDEV_SIZE * 50,   /* length of original file data */
+      MEMDEV_SIZE * 50,   /* length of compressed file data */
+      0,             /* block size */
+#ifdef WEBPORT
+      NULL,          /* SSI data routine */
+      NULL,          /* CGI routine */
+#ifdef SERVER_PUSH
+      NULL,          /* push callback */
+#endif
+#endif
+      &mdio,
+   },
 };
 
 int mdlist_size = sizeof(mdlist)/sizeof(struct vfs_file);
@@ -161,7 +177,7 @@ init_memdev(void)
 
    /* add the memory device files to vfs list */
    mdlist[0].next = vfsfiles;
-   vfsfiles = &mdlist[3];
+   vfsfiles = &mdlist[mdlist_size - 1];
 
    return 0;
 }

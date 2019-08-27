@@ -33,7 +33,7 @@ long     last_error;
 struct TelStatistics tel_stats;
 
 #ifdef TEL_USERAUTH
-char *tel_login_prompt  = "\nlogin: ";
+char *tel_login_prompt  = "\nlogin   : ";
 char *tel_passwd_prompt = "password: ";
 #endif
 

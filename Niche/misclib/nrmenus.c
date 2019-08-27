@@ -208,6 +208,13 @@ int set_clength(void * pio);
 int ping_set_parm (unsigned long int parm_type, unsigned long int value);
 #endif
 
+#ifdef PING_APP
+extern int ping_set_parm (u_long parm_type, u_long value);
+#endif
+#ifdef PING_APP
+extern int ping_set_parm (u_long parm_type, u_long value);
+#endif
+
 /*
  * Altera Niche Stack Nios port modification:
  * Add braces to remove build warning

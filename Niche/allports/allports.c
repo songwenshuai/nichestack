@@ -66,7 +66,7 @@
 #endif
 
 #if defined (IP_MULTICAST) && (defined (IGMP_V1) || defined (IGMP_V2))
-#include "../ipmc/igmp_cmn.h"
+#include "igmp_cmn.h"
 #endif /* IP multicast and (IGMPv1 or IGMPv2) */
 
 #include "menu.h"
@@ -381,10 +381,12 @@ netmain_init(void)
 #endif
 
 #ifdef IP_MULTICAST
+#ifdef IP_MULTI_UMCTEST
 #ifdef INCLUDE_TCP
    /* call the IP multicast test program */
    u_mctest_init();
 #endif
+#endif  
 #endif  
 
    /* clear debugging flags. Port can optionally turn them

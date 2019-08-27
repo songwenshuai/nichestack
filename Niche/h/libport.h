@@ -37,7 +37,7 @@
  */
 #define INICHE_STRICMP  1     /* no stricmp in C library */
 #define INICHE_STRNICMP 1     /* no strnicmp in C library */
-#define INICHE_STRISTR  1     /* no stristr in C library */
+//#define INICHE_STRISTR  1     /* no stristr in C library */
 
 #ifdef NOTDEF
 #define INCLUDE_FLASHFS 1     /* NV params read from flash */
@@ -55,7 +55,7 @@ void	panic(char * msg);
 #ifdef PRINTF_STDARG
 int doprint(char * target, unsigned tlen, CONST char *sp, va_list va);
 #else  /* PRINTF_STDARG */
-int doprint(char *target, unsigned tlen, char *sp, int *vp);
+int doprint(char *target, unsigned tlen, CONST char *sp, int *vp);
 #endif /* PRINTF_STDARG */
 
 /* map memory routines to standard lib */

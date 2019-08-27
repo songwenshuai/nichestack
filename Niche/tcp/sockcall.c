@@ -64,7 +64,7 @@
 #include "iniche_log.h"
 #endif
 /*#define SOCKDEBUG  1*/
-/*#define TRACE_DEBUG*/
+/*#define SOCK_TRACE_DEBUG*/
 
 /* Internal helper functions */
 static struct mbuf * sockargs(void *, int, int);
@@ -306,13 +306,13 @@ t_accept(long s,
       so = aso;
    }
    (void)soaccept (so, nam);
-#ifdef TRACE_DEBUG
+#ifdef SOCK_TRACE_DEBUG
    { struct sockaddr_in *sin;
       sin = mtod(nam, struct sockaddr_in *);
       INET_TRACE (INETM_SOCKET, ("INET:accept:done so %lx port %d addr %lx\n",
        so, sin->sin_port, sin->sin_addr.s_addr));
    }
-#endif   /* TRACE_INET */
+#endif   /* SOCK_TRACE_DEBUG */
    /* return the addressing info in the passed structure */
    if (addr != NULL)
       MEMCPY(addr, nam->m_data, *addrlen);
@@ -375,12 +375,12 @@ t_connect(long s,
       return SOCKET_ERROR;
    }
 
-#ifdef TRACE_DEBUG
+#ifdef SOCK_TRACE_DEBUG
    { struct sockaddr_in *sin = (struct sockaddr_in *)uap->sap;
       INET_TRACE (INETM_SOCKET, ("INET: connect, port %d addr %lx\n",
        sin->sin_port, sin->sin_addr.s_addr));
    }
-#endif   /* TRACE_DEBUG */
+#endif   /* SOCK_TRACE_DEBUG */
 
    LOCK_NET_RESOURCE(NET_RESID);
    if ((so->so_error = soconnect (so, nam)) != 0)

@@ -177,7 +177,7 @@ icmprcv(PACKET p)      /* the incoming packet */
  */
 #if defined(ALT_INICHE) && !defined(PING_APP) && defined(IP_RAW)
       return(ip_raw_input(p));
-#endif
+#else
 
       /* The PING appplication expects the nb_prot field to point to
        * the ICMP header, not the IP as it does here, NOR to the application
@@ -200,6 +200,7 @@ icmprcv(PACKET p)      /* the incoming packet */
       UNLOCK_NET_RESOURCE(FREEQ_RESID);
       return(0);
 #endif   /* PING_APP */
+#endif   /* IP_RAW */
 #ifdef FULL_ICMP
    case DESTIN:
       icmp_mib.icmpInDestUnreachs++;

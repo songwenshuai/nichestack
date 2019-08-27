@@ -371,7 +371,7 @@ mh_stats(void * pio)
       i++;
    }
 
-   ns_printf(pio, "heap; start: %lu,  min: %lu,  current: %lu;  actual: %lu ",
+   ns_printf(pio, "heap    : start: %lu,  min: %lu,  current: %lu;  actual: %lu ",
       mh_startfree, mh_minfree, mh_totfree, freeheap);
    ns_printf(pio, "alloc failed: %lu\n", mh_failed);
 

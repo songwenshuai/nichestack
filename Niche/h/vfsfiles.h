@@ -97,7 +97,7 @@
 #endif   /* NO_STDFILE_CALLS */
 #endif   /* HT_LOCALFS */
 
-#define  FILENAMEMAX    16 /* max chars in a file name */
+#define  FILENAMEMAX    20 /* max chars in a file name */
 
 #define  HTPATHMAX   128   /* max chars in a file name */
 

@@ -56,7 +56,9 @@ int   ipsec_outbound(PACKET * pp);
 /* function to obtain the length of the largest interrupt-safe buffer */
 extern unsigned pk_get_max_intrsafe_buf_len (void);
 /* compute the minimum of two quantities A and B */
+#ifndef   MIN
 #define MIN(A,B) (((A)<(B))?(A):(B))
+#endif
 /* number of fragments upto which we use ip_fragment_lc () for fragmentation 
  * (but only if the original IP datagram passed to ip_fragment () is in an 
  * interrupt-safe buffer) */

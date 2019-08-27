@@ -41,9 +41,7 @@
 #include "dns.h"
 #endif   /* DNS_CLIENT */
 
-#ifdef PING_APP
 #include "app_ping.h"
-#endif
 
 extern   int   deflength;  /* int ..\misclib\app_ping.c */
 extern   unsigned lilbufsiz;

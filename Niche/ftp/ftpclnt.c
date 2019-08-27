@@ -57,6 +57,7 @@ static unshort fc_next_port=FTP_START_DATA_PORT ;
 
 /* The FTP client's per-port message handler */
 extern   void fc_printf(ftpc *, char *, ...);   /* per-port response printer */
+extern   TK_OBJECT(to_ftpclnt);
 
 /* internal routines */
 int   fc_connopen(ftpc * ftpconn);  /* initiate command connection */
@@ -2334,7 +2335,8 @@ ftpc_process_pwd (void * pio)
    struct ftpc * tmpcon;
 
    FC_MENULOG();
-   if ((tmpcon = ftp_get_con (pio)) == NULL)
+   tmpcon = ftp_get_con (pio);
+   if (tmpcon == NULL)
    {
       ns_printf(pio,"Open FTP session first\n");
       return -1;

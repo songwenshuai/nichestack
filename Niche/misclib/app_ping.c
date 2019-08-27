@@ -681,8 +681,6 @@ int ping_cmd_end (void * pio)
 #else
    return (ping_end (pio));
 #endif
-
-   return 0;
 }
 
 
@@ -926,8 +924,6 @@ pingUpcall(PACKET p)
 #else   
    return (ping_send_msg1 (PING_DATA_ECHO_REPLY, ((u_long) p)));
 #endif
-   
-   return 0;
 }
 
 
@@ -948,8 +944,10 @@ ping_process_rcvd_reply_pkt (PACKET pkt)
    struct ping *  pp;
    u_char * pdata;
    int   i, dataend, pdlen;
+#ifdef PING_REQ_OUTDEV
    int   data_len;      /* length of DATA in recived ping */
    int   save_seq;
+#endif
    ip_addr save_host;
    PING_INFO p;
 
@@ -957,8 +955,10 @@ ping_process_rcvd_reply_pkt (PACKET pkt)
    /* the upcalled packet included the ICMP header. Strip this off
     * for the purposes of reporting data size
     */
+#ifdef PING_REQ_OUTDEV
    data_len = pkt->nb_plen -= sizeof(struct ping);
    save_seq = (unsigned)pp->pseq;
+#endif
    save_host = pkt->fhost;
 
    /* If the ping data fields looks like one of our defaults, verify

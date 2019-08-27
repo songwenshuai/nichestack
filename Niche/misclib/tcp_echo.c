@@ -108,9 +108,9 @@ struct TcpClient
    char     inbuf[ECHOBUFSIZE];  /* per-client data buffer */
    int      sending;             /* non-zero while client is in send loop */
 };
-
+#ifndef TCP_ZEROCOPY
 char *   srv_inbuf   =  NULL;
-
+#endif
 typedef struct TcpClient * TCPCLIENT ;
 TCPCLIENT tcpq;                  /* Start node for queue of TCP clients */
 
@@ -380,6 +380,7 @@ tcp_secho_init(void * pio)
    else
       ns_printf(pio,"tcp echo server not enabled\n");
 
+#ifndef TCP_ZEROCOPY
    srv_inbuf = (char *)npalloc(ECHOBUFSIZE);
    if (srv_inbuf == NULL)
    {
@@ -388,7 +389,7 @@ tcp_secho_init(void * pio)
       elisten_sock = INVALID_SOCKET;
       return TCPE_LISTEN_FAILED;
    }
-
+#endif
    return SUCCESS;
 }
 
@@ -423,11 +424,13 @@ tcp_secho_close(void * pio)
       }
    }
 
+#ifndef TCP_ZEROCOPY
    if (srv_inbuf)
    {
       npfree(srv_inbuf);
       srv_inbuf=NULL;
    }
+#endif
    if (elisten_sock == INVALID_SOCKET)
       return e;
 
@@ -789,7 +792,6 @@ tcp_echo_recv(void)
    int   len;        /* length of recv data */
    int   e;          /* error holder */
    unsigned i;       /* generic index */
-   int   count;      /* select return */
    fd_set fd_recv;   /* fd for recv */
    fd_set fd_accept; /* fd for accept */
    TCPCLIENT tmpclient = tcpq;
@@ -806,7 +808,6 @@ tcp_echo_recv(void)
 
    /* select on all open data sockets */
    i = 0;
-   count = 0;
 #ifdef USE_FDS
    while (tmpclient)
    {
@@ -866,12 +867,12 @@ tcp_echo_recv(void)
       fd_accept.fd_array[0] = elisten_sock;
       fd_accept.fd_count = 1;
 #endif  /* USE_FDS */
-      count = t_select(&fd_recv, NULL, &fd_accept, 1);
+      t_select(&fd_recv, NULL, &fd_accept, 1);
    }
    else 
    {
       if (i)   /* if no fd_set sockets filled in, don't bother */
-         count = t_select(&fd_recv, NULL, NULL, 1);
+         t_select(&fd_recv, NULL, NULL, 1);
    }
 
    /* While the t_select() was executing, commands can be 

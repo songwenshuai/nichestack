@@ -47,12 +47,12 @@
 #include <io.h>
 #endif   /* HT_LOCALFS */
 #endif   /* NOTDEF */
-
+#if 0
 #ifdef WEBPORT
 #include "httpd.h"   /* local NetPort HTML includes */
 #include "cgi.h"
 #endif   /* WEBPORT */
-
+#endif
 #ifdef HTML_COMPRESSION
 #include "htcmptab.h"   /* tag table, for compression */
 #endif   /* HTML_COMPRESSION */
@@ -786,7 +786,8 @@ int vfeof(VFILE * vfd)
 #ifdef HT_LOCALFS
    return(feof((FILE*)vfd));
 #endif
-   if ((c = vgetc(vfd)) == EOF )
+   c = vgetc(vfd);
+   if ( c == EOF )
    {
       return 1;
    }   

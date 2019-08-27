@@ -172,7 +172,6 @@ ftp_open(void * pio)
    char *   msg;
    u_long     domain;        /* AF_INET or AF_INET6 */
    u_char     server[16];    /* dual mode IP address */
-   u_long x;
 
    GEN_IO io= (GEN_IO) pio ;
 
@@ -232,8 +231,6 @@ ftp_open(void * pio)
       ns_printf(pio,"ftp session already open\n");
       return -1;
    }
-
-   x = strlen (passwd) + 1;
 
 #ifdef OS_PREEMPTIVE
    ftpc_send_msg5 (FTPC_CNTRL_START_SESS,

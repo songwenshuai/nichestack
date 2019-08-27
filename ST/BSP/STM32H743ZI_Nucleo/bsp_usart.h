@@ -56,7 +56,7 @@ extern UART_HandleTypeDef huart3;
 
 /* USER CODE END Private defines */
 
-void MX_USART3_UART_Init(void);
+void USART3_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
