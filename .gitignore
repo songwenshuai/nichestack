@@ -1,5 +1,6 @@
-Backup of Blinky.ewp
-Blinky.ewt
+.vscode/*
+.gitignore
+
 *.o
 *.xcl
 *.pbi
@@ -16,4 +17,9 @@ Blinky.ewt
 *.linf
 *.browse
 *.tmp
-ST/STM32H743ZI_Nucleo/Blinky/OS2/IAR/settings/Blinky_EncodingOverride.xml
+*.dep
+*.xml
+*.bin
+*.hex
+*.jlink
+*.pbw

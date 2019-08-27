@@ -1,0 +1,103 @@
+@Note If the  application is using the DTCM/ITCM memories (@0x20000000/ 0x0000000: not cacheable and only accessible by the Cortex M7 and the  MDMA), no need for cache maintenance when the Cortex M7 and the MDMA access these RAMs.If the application needs to use DMA(or other masters) based access or requires more RAM, then  the user has to:
+              - Use a non TCM SRAM. (example : D1 AXI-SRAM @ 0x24000000)
+              - Add a cache maintenance mechanism to ensure the cache coherence between CPU and other masters(DMAs,DMA2D,LTDC,MDMA).
+              - The addresses and the size of cacheable buffers (shared between CPU and other masters) must be	properly defined to be aligned to L1-CACHE line size (32 bytes). 
+ 
+@Note It is recommended to enable the cache and maintain its coherence, but depending on the use case.
+      It is also possible to configure the MPU as "Write through", to guarantee the write access coherence.
+              In that case, the MPU must be configured as Cacheable/Bufferable/Not Shareable.
+              Even though the user must manage the cache coherence for read accesses.
+              Please refer to the AN4838 “Managing memory protection unit (MPU) in STM32 MCUs”
+              Please refer to the AN4839 “Level 1 cache on STM32F7 Series”
+
+@Note 如果应用程序正在使用 DTCM / ITCM 存储器（@ 0x20000000 / 0x0000000：不可缓存且只能由 Cortex M7 和 MDMA 访问），当 Cortex M7 和 MDMA 访问这些 RAM 
+      时，不需要进行缓存维护。如果 应用程序需要使用基于DMA（或其他主控）的访问或需要更多RAM，然后用户必须：
+      - 使用非TCM SRAM。 （例如：D1 AXI-SRAM @ 0x24000000）
+      - 添加缓存维护机制，以确保CPU与其他主服务器（DMA，DMA2D，LTDC，MDMA）之间的缓存一致性。
+      - 必须正确定义可缓存缓冲区的地址和大小（在CPU和其他主机之间共享）以与L1-CACHE行大小（32字节）对齐。
+
+@Note 建议启用缓存并保持其一致性，但具体取决于用例。
+      也可以将MPU配置为“直写”，以保证写访问一致性。
+      在这种情况下，MPU必须配置为可缓存/可缓冲/不可共享。
+      即使用户必须管理读取访问的缓存一致性。
+      请参考AN4838“在STM32 MCU中管理存储器保护单元（MPU）”
+      请参考AN4839“STM32F7系列的1级缓存”
+
+void JumpToBootloader(void)
+{
+  uint32_t i=0;
+  void (*SysMemBootJump)(void);
+ 
+  /* Set the address of the entry point to bootloader */
+     volatile uint32_t BootAddr = 0x1FF09800;
+ 
+  /* Disable all interrupts */
+     __disable_irq();
+
+  /* Disable Systick timer */
+     SysTick->CTRL = 0;
+	 
+  /* Set the clock to the default state */
+     HAL_RCC_DeInit();
+
+  /* Clear Interrupt Enable Register & Interrupt Pending Register */
+     for (i=0;i<5;i++)
+     {
+	  NVIC->ICER[i]=0xFFFFFFFF;
+	  NVIC->ICPR[i]=0xFFFFFFFF;
+     }	
+	 
+  /* Re-enable all interrupts */
+     __enable_irq();
+	
+  /* Set up the jump to booloader address + 4 */
+     SysMemBootJump = (void (*)(void)) (*((uint32_t *) ((BootAddr + 4))));
+ 
+  /* Set the main stack pointer to the bootloader stack */
+     __set_MSP(*(uint32_t *)BootAddr);
+ 
+  /* Call the function to jump to bootloader location */
+     SysMemBootJump(); 
+  
+  /* Jump is done successfully */
+     while (1)
+     {
+      /* Code should never reach this loop */
+     }
+}
+
+
+STM32H7 编程手册
+STM32 MPU 说明
+CORTEX M3 权威指南(中文)
+
+要移植的模块
+IPERF 模块
+NBNS 模块
+SNTP 模块
+
+目前要解决的
+FATFS 有操作系统的移植
+FATFS 在VFS的接口，VFS 统一, ALIOS VFS 接口移植
+然后要解决ulog移植
+
+
+如果往S7X移植要做的
+FREERTOS
+
+
+JLINK 和板子接线对应
+==========================
+JLINK           NUCLEO
+==========================
+VREF            3V3
+VCC             5V0
+GND             GND
+--------------------------
+TCK             PA14
+TMS             PA13
+RST             NRSI
+--------------------------
+TXD             PC11
+RXD             PC10
+==========================
