@@ -137,6 +137,15 @@ TK_ENTRY(tk_sntpv4);
 long     sntpv4_wakes   =  0;
 extern int sntpv4_task (void);
 #endif
+
+#ifdef BUTTON
+TK_OBJECT(to_BtnTask);
+TK_ENTRY(BtnTask);
+#endif
+
+TK_OBJECT(to_EthifTask);
+TK_ENTRY(EthifTask);
+
 /* 
  * Altera Niche Stack Nios port modification:
  * Defines for the priorities and stack sizes are setup 
@@ -206,6 +215,23 @@ struct inet_taskinfo nettasks[]  =  {
    },
 #endif
 
+   {
+      &to_EthifTask,
+      "Ethif",
+      EthifTask,
+      TK_ETHIF_PRIO,
+      TK_ETHIF_SSIZE,
+   },
+
+#ifdef BUTTON
+   {
+      &to_BtnTask,
+      "button",
+      BtnTask,
+      TK_BTN_TPRIO,
+      TK_BTN_SSIZE,
+   },
+#endif
 };
 
 int      num_net_tasks  = sizeof(nettasks)/sizeof(struct inet_taskinfo);
@@ -277,6 +303,9 @@ netmain(void)
 #ifndef NO_INET_STACK
 TK_ENTRY(tk_netmain)
 {
+   USE_ARG(parm);  /* TK_ENTRY macro defines tk_netmain with 1 arg parm */
+   int status;
+
    netmain_init(); /* initialize all modules */
 
    iniche_net_ready = TRUE;    /* let the other threads spin */
@@ -284,19 +313,18 @@ TK_ENTRY(tk_netmain)
    for (;;)
    {
       TK_NETRX_BLOCK();
+      if (status)
+      {
       netmain_wakes++;  /* count wakeups */
 
       /* see if there's newly received network packets */
       if (rcvdq.q_len)
          pktdemux();
-         
+      }
       /* do not kill packet demux on net_system_exit. It may be
        * vital to a clean shutdown 
        */
    }
-
-   USE_ARG(parm);  /* TK_ENTRY macro defines tk_netmain with 1 arg parm */
-   TK_RETURN_UNREACHABLE();
 }
 #endif   /* NO_INET_STACK */
 
@@ -316,6 +344,8 @@ extern   int dhc_second(void);
 #ifndef NO_INET_TICK
 TK_ENTRY(tk_nettick)
 {
+   USE_ARG(parm);  /* TK_ENTRY macro defines tk_nettick with 1 arg parm */
+
    /* wait till the stack is initialized */
    while (!iniche_net_ready)
    {
@@ -340,8 +370,6 @@ TK_ENTRY(tk_nettick)
        * vital to a clean shutdown 
        */
    }
-   USE_ARG(parm);  /* TK_ENTRY macro defines tk_nettick with 1 arg parm */
-   TK_RETURN_UNREACHABLE();
 }
 #endif   /* NO_INET_TICK */
 

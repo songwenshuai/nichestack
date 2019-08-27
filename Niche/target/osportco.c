@@ -33,9 +33,15 @@
 #include "in_utils.h"
 #include "memwrap.h"
 
+#if (OS_TRACE_EN > 0u)
+/* SEEGER */
+#include  <os_trace.h>
+#endif
+
+
 #ifdef OS_PREEMPTIVE
-extern os_sema resid_semaphore[MAX_RESID+1];
-extern os_sema app_semaphore[MAX_SEMID+1];
+extern OsSemaphore resid_semaphore[MAX_RESID+1];
+extern OsSemaphore app_semaphore[MAX_SEMID+1];
 #endif
 
 unsigned long cticks;
@@ -54,24 +60,20 @@ u_long tcp_wakeup_count = 0;
 void
 LOCK_NET_RESOURCE(int resid)
 {
-   uint8_t error = 0;
-   int   errct = 0;
+   int status;
 
    if ((0 <= resid) && (resid <= MAX_RESID))
    {
-      do
-      {
-         OSSemPend(resid_semaphore[resid], 0, &error);
+         status = osWaitForSemaphore(&resid_semaphore[resid], INFINITE_DELAY);
          /* 
-          * Sometimes we get a "timeout" error even though we passed a zero
+          * Sometimes we get a "timeout" os_err even though we passed a zero
           * to indicate we'll wait forever. When this happens, try again:
           */
-         if ((error == OS_SEM_TIMEOUT) && (++errct > 1000))
+         if (!status)
          {
-            panic("lock NET");   /* fatal */
+            TRACE_ERROR("lock NET sem err\r\n");  /* SYS_DEBUG MESSAGE */
             return;
          }
-      } while (error == OS_SEM_TIMEOUT);
    }
    else
       dtrap();
@@ -80,15 +82,9 @@ LOCK_NET_RESOURCE(int resid)
 void
 UNLOCK_NET_RESOURCE(int resid)
 {
-   uint8_t error = 0;
-
    if ((0 <= resid) && (resid <= MAX_RESID))
    {
-      error = OSSemPost(resid_semaphore[resid]);
-      if (error != OS_NONE_ERR)
-      {
-         panic("unlock NET");
-      }
+      osReleaseSemaphore(&resid_semaphore[resid]);
    }
    else
       dtrap();
@@ -118,58 +114,24 @@ UNLOCK_NET_RESOURCE(int resid)
  * prioritized RTOS, but that would penalize all the non-preemptive and
  * non-prioritized systems we also support.
  */
-
-extern TK_ENTRY(tk_netmain);        /* in netmain.c */
-extern long     netmain_wakes;
-
-#ifdef TK_STDIN_DEVICE
-extern TK_ENTRY(tk_keyboard);       /* in netmain.c */
-extern long     keyboard_wakes;
-#endif
-
-extern TK_ENTRY(tk_nettick);        /* in netmain.c */
-extern long     nettick_wakes;
-
 int TK_NEWTASK(struct inet_taskinfo *nettask)
 {
-  uint8_t error;
-  OS_STK *stack;
+   OsTask *task_ptr;
 
-  stack = (OS_STK *)npalloc(nettask->stacksize * sizeof(OS_STK));
-  if (!stack)
-    panic("stack alloc");
+   task_ptr = osCreateTask( nettask->name,       /* 任务名称                                 */
+                            nettask->entry,      /* 函数指针，void *pd为函数的参数           */
+                            NULL,                /* 建立任务时，传递的参数                   */
+                            nettask->stacksize,  /* 指定任务堆栈的大小，由OS_STK类型决定     */
+                            nettask->priority    /* 任务优先级                               */
+                           );
+   if (task_ptr == NULL)
+   {
+      /* All other errors are fatal */
+      TRACE_ERROR("Task create error on %s\n", nettask->name);
+      return (-1);
+   }
 
-  *nettask->tk_ptr = (uint8_t)nettask->priority;
-
-  error = OSTaskCreateExt(
-      nettask->entry,                             /* 函数指针，void *pd为函数的参数            */
-      NULL,                                       /* 建立任务时，传递的参数                    */
-      stack + (nettask->stacksize) - 1,           /* 指向堆栈任务栈顶的指针                    */
-      nettask->priority,                          /* 任务优先级                               */
-      nettask->priority,                          /* 任务ID                                   */
-      stack,                                      /* 指向堆栈底部的指针，用于OSTaskStkChk()函数 */
-      (uint32_t)nettask->stacksize,               /* 指定任务堆栈的大小，由OS_STK类型决定       */
-      NULL,                                       /* 定义数据结构的指针，作为TCB的扩展          */
-      OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR); /* 存放于任务操作相关的信息，详见uCOS-II.H    */
-  if (error != OS_NONE_ERR)
-  { /* All other errors are fatal */
-    printf("Task create error /(RTOS error code:%d/) on %s\n", error, nettask->name);
-    panic("Task create error");
-    return (-1);
-  }
-
-  /* Include the task name, so that uc/osII (os aware) debuggers can
-    * display it.
-    */
-  OSTaskNameSet(nettask->priority, (uint8_t *)&nettask->name[0], &error);
-  if (error != OS_NONE_ERR)
-  { /* All other errors are fatal */
-    printf("Task Name Set error /(RTOS error code:%d/) on %s\n", error, nettask->name);
-    panic("Task Name Set error");
-    return (-1);
-  }
-
-  printf("Created \"%s\"\ttask (Prio: %d)\n", (char *)nettask->name, nettask->priority);
+   nettask->tk_ptr = task_ptr;
 
   return (0);
 }
@@ -192,26 +154,22 @@ int TK_NEWTASK(struct inet_taskinfo *nettask)
  * or a periodic timeout notification.
  */
 void
-wait_app_sem(unsigned long semid)
+wait_app_sem(long int semid)
 {
-   uint8_t error = 0;
-   int   errct = 0;
+   int status;
 
    if ((0 <= semid) && (semid <= MAX_SEMID))
    {
-      do
-      {
-         OSSemPend(app_semaphore[semid], 0, &error);
+         status = osWaitForSemaphore(&app_semaphore[semid], INFINITE_DELAY);
          /* 
-          * Sometimes we get a "timeout" error even though we passed a zero
+          * Sometimes we get a "timeout" os_err even though we passed a zero
           * to indicate we'll wait forever. When this happens, try again:
           */
-         if ((error == OS_SEM_TIMEOUT) && (++errct > 1000))
+         if (!status)
          {
-            panic("lock NET");   /* fatal */
+            TRACE_ERROR("lock APP sem err\r\n");  /* SYS_DEBUG MESSAGE */
             return;
          }
-      } while (error == OS_SEM_TIMEOUT);
    }
    else
       dtrap();
@@ -234,17 +192,11 @@ wait_app_sem(unsigned long semid)
  */
 
 void
-post_app_sem(unsigned long semid)
+post_app_sem(long int semid)
 {
-   uint8_t error;
-
    if ((0 <= semid) && (semid <= MAX_SEMID))
    {
-      error = OSSemPost(app_semaphore[semid]);
-      if (error != OS_NONE_ERR)
-      {
-         panic("unlock APP");
-      }
+      osReleaseSemaphore(&app_semaphore[semid]);
    }
    else
       dtrap();
@@ -298,7 +250,7 @@ LOCKNET_CHECK(struct queue * q)
    if(q == &mfreeq)
    {
       /* A non-zero from OSSemAccept() means the semaphore was NOT locked */
-      if (OSSemAccept(resid_semaphore[NET_RESID]) != 0)
+      if (OSSemAccept(resid_semaphore[NET_RESID].p) != 0)
       {
          panic("locknet_check1");
       }
@@ -314,8 +266,10 @@ LOCKNET_CHECK(struct queue * q)
       return;
    }
 
-   /* 使用中断禁用保护队列,我们需要检查中断状态, irq_level 指示了当前中断状态
-    * irq_level = 0 没有中断保护,如果没有中断,进入 panic.
+   /* Since the Nios2 build uses interrupt disabling to protect these
+    * queues, we just need to check the Interrupt state. We use look at
+    * the irq_level to get the current interrupt state, if interrupts
+    * were not then we are going to panic().
     */
 
    if(irq_level == 0)    /* Get current interupt state */

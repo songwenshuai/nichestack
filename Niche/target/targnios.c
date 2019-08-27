@@ -23,10 +23,20 @@
  * 
  */
 
+/* Nichestack definitions */
+#include <stm32h7xx_hal.h>
+
+/* Includes ------------------------------------------------------------------*/
+#include "cpu.h"
+
 #include "ipport.h"
 #include "libport.h"
+#include "tcpport.h"
+#include "net.h"
 #include "in_utils.h"
 #include "memwrap.h"
+#include "ifec.h"
+
 #ifdef VFS_FILES
 #include "vfsfiles.h"
 #endif
@@ -55,6 +65,10 @@ extern int ppp_static;     /* number static PPP ifaces to set */
 #ifdef INCLUDE_NVPARMS
 #include "nvparms.h"
 #endif
+
+#if defined (IP_MULTICAST) && (defined (IGMP_V1) || defined (IGMP_V2))
+#include "igmp_cmn.h"
+#endif /* IP multicast and (IGMPv1 or IGMPv2) */
 
 #ifdef SMTP_ALERTS
 #include "smtpport.h"
@@ -116,11 +130,11 @@ pre_task_setup()
  * code) for IP address assignment, for each mac (net).
  * The following is thus disabled.
  */
-#ifndef ALT_INICHE
 #ifndef INCLUDE_NVPARMS
    {
       int i = 0;              /* network index */
 
+#ifdef USE_SMSC91X
       /* Ethernet */
       if (i < MAXNETS)
       {
@@ -132,6 +146,7 @@ pre_task_setup()
 #endif
          i++;
       }
+#endif /* SMSC91x */
 
 #ifdef USE_PPP
       /* PPP */
@@ -175,9 +190,6 @@ pre_task_setup()
    set_nv_defaults = nv_defaults;   /* set nv parameter init routine */
 
 #endif /* INCLUDE_NVPARMS */
-
-#endif /* not ALT_INICHE */
-
 #ifdef   USE_PPP
 #ifdef   MINI_IP
    /* If we are using the mini IP layer and PPP, then  overwrite the 
@@ -265,6 +277,7 @@ nv_defaults()
    int   e;
 
    /* store default IP info */
+#ifdef USE_SMSC91X
    inet_nvparms.ifs[iface].ipaddr =  htonl(0x0a000067);   /* 10.0.0.106 */
 #ifdef USE_PPPOE
    inet_nvparms.ifs[iface].subnet = htonl(0xfffe0000);    /* 255.254.0.0 */
@@ -279,6 +292,7 @@ nv_defaults()
     iface, PUSH_IPADDR(inet_nvparms.ifs[iface].ipaddr) );
 
    iface++;
+#endif /* */
 
 #ifdef USE_PPP
    /* PPP */
@@ -300,7 +314,9 @@ nv_defaults()
    inet_nvparms.ifs[iface].ipaddr = htonl(0x00000000);
    inet_nvparms.ifs[iface].subnet = htonl(0x00000000);
    inet_nvparms.ifs[iface].gateway = htonl(0x00000000);
-
+#ifdef IP_MULTICAST
+   inet_nvparms.ifs[iface].igmp_oper_mode = IGMP_MODE_DEFAULT;
+#endif
 #ifdef USE_COMPORT
    comport_nvparms.LineProtocol = 1;
 #endif   /* defined (USE_PPP) || defined(USE_SLIP) */
@@ -370,9 +386,31 @@ nv_defaults()
    }
 
    /* create the some required NV files */
-   nv_fopen(srvfilename, "w+");
-   nv_fopen(natfilename, "w+");
-
+   fp = nv_fopen(srvfilename, "w+");
+   if (fp == NULL)
+      dprintf("error creating %s\n", srvfilename);
+   else
+   {
+      e = nv_fprintf(fp, "#\n#empty server.nv\n#\n");
+      if (e < 1)
+      {
+         dprintf("nv_defaults: error writing %s\n", srvfilename);
+      }
+      nv_fclose(fp);
+   }
+   
+   fp = nv_fopen(natfilename, "w+");
+   if (fp == NULL)
+      dprintf("error creating %s\n", natfilename);
+   else
+   {
+      e = nv_fprintf(fp, "#\n#empty natdb.nv\n#\n");
+      if (e < 1)
+      {
+         dprintf("nv_defaults: error writing %s\n", natfilename);
+      }
+      nv_fclose(fp);
+   }
 }
 
 #endif  /* INCLUDE_NVPARMS */
@@ -382,12 +420,12 @@ prep_armintcp(int ifaces_found)
 {
 /*
  * Altera Niche Stack Nios port modification:
- * Call eth_devices_init, in alt_iniche_dev.c, 
+ * Call eth_dev_init, in alt_iniche_dev.c, 
  * to step through all devices and all their respective
  * low-level initialization routines.
  */
 #ifdef ALT_INICHE
-   ifaces_found = eth_devices_init(ifaces_found);
+   ifaces_found = eth_dev_init(ifaces_found);
 #endif
 
 

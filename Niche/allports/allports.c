@@ -286,9 +286,15 @@ netmain_init(void)
 #ifdef IP_V6
    ip6_addr host;
 #endif
-
-   printf("%s", name);
+   printf("\n");
+   printf("###########################################################################\n");
+   printf("##                                 BOOT                                  ##\n");
+   printf("##                          SANSI Technologies                           ##\n");
+   printf("##                             Song Wenshuai                             ##\n");
+   printf("###########################################################################\n");
    printf("Copyright 1996-2008 by InterNiche Technologies. All rights reserved. \n");
+   printf("%s\n", name);
+
 #ifdef IN_MENUS
    install_version("allports3.1");
 #endif

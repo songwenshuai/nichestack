@@ -23,7 +23,7 @@
  */
 
 /* Nichestack definitions */
-#include "stm32f10x.h"
+#include  <stm32h7xx_hal.h>
 
 /* Includes ------------------------------------------------------------------*/
 #include "cpu.h"
@@ -37,13 +37,11 @@
 #include "memwrap.h"
 #include "ifec.h"
 
-char mac_addr[6]; /* MAC address */
-
-os_sema mheap_sem_ptr;
-os_sema rcvdq_sem_ptr;
+OsSemaphore mheap_sem_ptr;
+OsSemaphore rcvdq_sem_ptr;
 #ifdef OS_PREEMPTIVE
-os_sema resid_semaphore[MAX_RESID + 1];
-os_sema app_semaphore[MAX_SEMID + 1];
+OsSemaphore resid_semaphore[MAX_RESID + 1];
+OsSemaphore app_semaphore[MAX_SEMID + 1];
 #endif
 
 #ifndef TCPWAKE_RTOS
@@ -58,42 +56,47 @@ extern int global_TCPwakeup_setIndx;
 extern struct net netstatic[STATIC_NETS];
 
 /*
- * Altera Niche Stack Nios port modification:
- * Provide init routine to call after multi-tasking
- * has started to create uc/OS resources.
- *
- * Do not build this portion with SUPERLOOP
+ * Create Sem
  */
-#ifndef SUPERLOOP
-
-void iniche_init(void)
+void sem_create(void)
 {
-  int i;
-
-  iniche_net_ready = 0;
-
+   int i;
+   INT8U SEM_NAME[20] = {0};
+   
    /* initialize the npalloc() heap semaphore */
-   mheap_sem_ptr = OSSemCreate(1);
-   if (!mheap_sem_ptr)
-      panic("mheap_sem_ptr create err"); 
+   if(!osCreateSemaphore(&mheap_sem_ptr, 1))
+   {
+      TRACE_ERROR("mheap_sem_ptr create err\r\n");      /* SYS_DEBUG MESSAGE */
+   }
+   OSEventNameSet(mheap_sem_ptr.p,  (INT8U *)"mheap sem",   NULL);
 
-   rcvdq_sem_ptr = OSSemCreate(0);
-   if (!rcvdq_sem_ptr)
-      panic("rcvdq_sem_ptr create err"); 
+   if(!osCreateSemaphore(&rcvdq_sem_ptr, 0))
+   {
+      TRACE_ERROR("rcvdq_sem_ptr create err\r\n");      /* SYS_DEBUG MESSAGE */
+   }
+   OSEventNameSet(rcvdq_sem_ptr.p,  (INT8U *)"rcvdq sem",   NULL);
 
 #ifdef OS_PREEMPTIVE
-  for (i = 0; i <= MAX_RESID; i++)
-  {
-    resid_semaphore[i] = OSSemCreate(1);
-    if (!resid_semaphore[i])
-      panic("resid_semaphore create err");
-  }
-  for (i = 0; i <= MAX_SEMID; i++)
-  {
-    app_semaphore[i] = OSSemCreate(1);
-    if (!app_semaphore[i])
-      panic("app_semaphore create err");
-  }
+
+   for (i = 0; i <= MAX_RESID; i++)
+   {
+      if(!osCreateSemaphore(&resid_semaphore[i], 1))
+      {
+         TRACE_ERROR("resid_semaphore create err\r\n");  /* SYS_DEBUG MESSAGE */
+      }
+      sprintf((char *)SEM_NAME, "resid sem[%d]", i);
+      OSEventNameSet(resid_semaphore[i].p, SEM_NAME, NULL);
+   }
+   
+   for (i = 0; i <= MAX_SEMID; i++)
+   {
+      if(!osCreateSemaphore(&app_semaphore[i], 1))
+      {
+         TRACE_ERROR("app_semaphore create err\r\n"); /* SYS_DEBUG MESSAGE */
+      }
+      sprintf((char *)SEM_NAME, "app sem[%d]", i);
+      OSEventNameSet(app_semaphore[i].p, SEM_NAME, NULL);
+   }
 #endif /* OS_PREEMPTIVE */
 
 #ifndef TCPWAKE_RTOS
@@ -104,12 +107,46 @@ void iniche_init(void)
   {
     global_TCPwakeup_set[i].ctick = 0;
     global_TCPwakeup_set[i].soc_event = NULL;
-    global_TCPwakeup_set[i].semaphore = OSSemCreate(0);
-    if (!global_TCPwakeup_set[i].semaphore)
-      panic("globwake_semaphore create err");
-  }
+    if(!osCreateSemaphore(&global_TCPwakeup_set[i].semaphore, 0))
+      {
+         TRACE_ERROR("globwake_semaphore create err\r\n");  /* SYS_DEBUG MESSAGE */
+      }
+      sprintf((char *)SEM_NAME, "tcp wake sem[%d]", i);
+      OSEventNameSet(global_TCPwakeup_set[i].semaphore.p, SEM_NAME, NULL);
+   }
   global_TCPwakeup_setIndx = 0;
 #endif /* TCPWAKE_RTOS */
+}
+
+/*
+ * Altera Niche Stack Nios port modification:
+ * Provide init routine to call after multi-tasking
+ * has started to create uc/OS resources.
+ *
+ * Do not build this portion with SUPERLOOP
+ */
+#ifndef SUPERLOOP
+
+void iniche_init(void)
+{
+   iniche_net_ready = 0;
+
+   /* Get HEAP definitions */
+   mheap_init(HEAP_START, HEAP_SIZE);
+   
+   /* Created Sem */
+   sem_create();
+
+   /* Start the Iniche-specific network tasks and initialize the network
+     * devices.
+     */
+   osSuspendAllTasks();
+   netmain(); /* Create net tasks */
+   osResumeAllTasks();
+
+   /* Wait for the network stack to be ready before proceeding. */
+   while (!iniche_net_ready)
+      TK_SLEEP(1);
 }
 #endif /* !SUPERLOOP */
 
@@ -120,27 +157,14 @@ char *npalloc(unsigned size)
   char *(*alloc_rtn)(size_t size) = calloc1;
 
 #ifdef RTOS
-   uint8_t err;
+   int status;
 #endif
 
 #ifdef RTOS
-   OSSemPend(mheap_sem_ptr, 0, &err);
-   if(err)
+   status = osWaitForSemaphore(&mheap_sem_ptr, INFINITE_DELAY);
+   if (!status)
    {
-      int errct = 0;
-
-      /* sometimes we get a "timeout" error even though we passed a zero
-       * to indicate we'll wait forever. When this happens, try again:
-       */
-      while(err == OS_SEM_TIMEOUT)
-      {
-         if(errct++ > 1000)
-         {
-            panic("npalloc");    /* fatal? */
-            return NULL;
-         }
-         OSSemPend(mheap_sem_ptr, 0, &err);
-      }
+      TRACE_ERROR("alloc mheap sem pend err\r\n");  /* SYS_DEBUG MESSAGE */
    }
 #endif
 
@@ -151,7 +175,7 @@ char *npalloc(unsigned size)
 #endif
 
 #ifdef RTOS 
-   err = OSSemPost(mheap_sem_ptr);
+   osReleaseSemaphore(&mheap_sem_ptr);
 #endif
 
   if (!ptr)
@@ -166,27 +190,14 @@ void npfree(void *ptr)
   void (*free_rtn)(char *ptr) = mem_free;
 
 #ifdef RTOS
-   uint8_t err;
+   int status;
 #endif
 
 #ifdef RTOS
-   OSSemPend(mheap_sem_ptr, 0, &err);
-   if (err)
+   status = osWaitForSemaphore(&mheap_sem_ptr, INFINITE_DELAY);
+   if (!status)
    {
-      int errct = 0;
-
-      /* sometimes we get a "timeout" error even though we passed a zero
-       * to indicate we'll wait forever. When this happens, try again:
-       */
-      while (err == OS_SEM_TIMEOUT)
-      {
-         if (errct++ > 1000)
-         {
-            panic("npfree");    /* fatal? */
-            return;
-         }
-         OSSemPend(mheap_sem_ptr, 0, &err);
-      }
+      TRACE_ERROR("free mheap sem pend err\r\n");  /* SYS_DEBUG MESSAGE */
    }
 #endif
 
@@ -197,7 +208,7 @@ void npfree(void *ptr)
 #endif
 
 #ifdef RTOS
-   err = OSSemPost(mheap_sem_ptr);
+   osReleaseSemaphore(&mheap_sem_ptr);
 #endif
 }
 
@@ -230,99 +241,6 @@ memalign(unsigned align, unsigned size)
    }
 
    return (ptr);
-}
-
-/* 
- * The IP, gateway, and subnet mask address below are used as a last resort 
- * if no network settings can be found, and DHCP (if enabled) fails. You can
- * edit these as a quick-and-dirty way of changing network settings if desired.
- * 
- * Default IP addresses are set to all zeros so that DHCP server packets will
- * penetrate secure routers. They are NOT intended to be valid static IPs, 
- * these values are only a valid default on networks with DHCP server. 
- */
-
-/*
- * generate_mac_addr()
- * 
- * This routine is called when failed to read MAC address from flash (i.e: no 
- * flash on the board). The user is prompted to enter the serial number at the 
- * console. A MAC address is then generated using 0xFF followed by the last 2 
- * bytes of the serial number appended to Altera's Vendor ID, an assigned MAC 
- * address range with the first 3 bytes of 00:07:ED.  For example, if the Nios 
- * Development Board serial number is 040800017, the corresponding ethernet 
- * number generated will be 00:07:ED:FF:8F:11.
- * 
- */
-int generate_mac_addr(unsigned char mac_addr[6])
-{
-    int error = -1;
-
-    /* This is the Altera Vendor ID */
-    mac_addr[0] = MACADDR0;
-    mac_addr[1] = MACADDR1;
-    mac_addr[2] = MACADDR2;
-
-    /* Reserverd Board identifier */
-    mac_addr[3] = MACADDR3;
-    mac_addr[4] = MACADDR4;
-    mac_addr[5] = MACADDR5;
-
-    printf("Your Ethernet MAC address is %02x:%02x:%02x:%02x:%02x:%02x\n",
-    mac_addr[0], mac_addr[1],mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-
-    error = 0;
-
-    return error;
-}
-
-/*
-* get_mac_addr
-*
-* Read the MAC address in a board specific way
-*
-*/
-int get_mac_addr(unsigned char mac_addr[6])
-{
-    int error = 0;
-
-    error = generate_mac_addr(mac_addr);
-
-    return error;
-}
-
-/*
- * get_ip_addr()
- * 
- * This routine is called by InterNiche to obtain an IP address for the
- * specified network adapter. Like the MAC address, obtaining an IP address is
- * very system-dependant and therefore this function is exported for the
- * developer to control.
- * 
- * In our system, we are either attempting DHCP auto-negotiation of IP address,
- * or we are setting our own static IP, Gateway, and Subnet Mask addresses our
- * self. This routine is where that happens.
- */
-int get_ip_addr(ip_addr *ipaddr, ip_addr *netmask, ip_addr *gw, int *use_dhcp)
-{
-    IP4_ADDR(*ipaddr,  IPADDR0,  IPADDR1,  IPADDR2,  IPADDR3);
-    IP4_ADDR(*gw,      GWADDR0,  GWADDR1,  GWADDR2,  GWADDR3);
-    IP4_ADDR(*netmask, MSKADDR0, MSKADDR1, MSKADDR2, MSKADDR3);
-
-#ifdef DHCP_CLIENT
-    *use_dhcp = 1;
-#else  /* not DHCP_CLIENT */
-    *use_dhcp = 0;
-
-    printf("Static IP Address is %d.%d.%d.%d\n",
-           ip4_addr1(*ipaddr),
-           ip4_addr2(*ipaddr),
-           ip4_addr3(*ipaddr),
-           ip4_addr4(*ipaddr));
-#endif /* not DHCP_CLIENT */
-
-    /* Non-standard API: return 1 for success */
-    return 1;
 }
 
 /* FUNCTION: dump_pkt()
@@ -377,6 +295,8 @@ void dtrap(void)
    printf("dtrap - needs breakpoint\n");
 }
 
+extern UART_HandleTypeDef huart3;
+
 /* FUNCTION: getch()
  *
  * Read a chatacter from the Console
@@ -385,9 +305,17 @@ void dtrap(void)
  *
  * RETURNS: int              value of character read or -1 if no character
  */
-int getch()
+int getch(void)
 {
-   return (uint16_t)(USART2->DR & (uint16_t)0x01FF);
+  int ch;
+
+  ch = -1;
+  if (huart3.Instance->ISR & UART_FLAG_RXNE)
+  {
+    ch = huart3.Instance->RDR & 0xff;
+  }
+
+  return ch;
 }
 
 /* FUNCTION: dputchar()
@@ -405,15 +333,14 @@ void dputchar(int chr)
     /* Convert LF in to CRLF */
     if (chr == '\n')
     {
-      while ((USART2->SR & USART_FLAG_TXE) == RESET)
-        /* null */;
-      USART2->DR = ('\r' & (uint16_t)0x01FF);
+      __HAL_UART_CLEAR_FLAG(&huart3, UART_FLAG_TC);
+      huart3.Instance->TDR = '\r';
+      while (__HAL_UART_GET_FLAG(&huart3, UART_FLAG_TC) == RESET);
     }
 
-    /* mask out any high bits */
-    while ((USART2->SR & USART_FLAG_TXE) == RESET)
-      /* null */;
-    USART2->DR = (chr & (uint16_t)0x01FF);
+   __HAL_UART_CLEAR_FLAG(&huart3, UART_FLAG_TC);
+   huart3.Instance->TDR = chr;
+   while (__HAL_UART_GET_FLAG(&huart3, UART_FLAG_TC) == RESET);
 }
 
 /* FUNCTION: kbhit()
@@ -426,15 +353,13 @@ void dputchar(int chr)
  */
 int kbhit(void)
 {
-  if ((USART2->SR & USART_FLAG_RXNE) != (uint16_t)RESET)
+  if(huart3.Instance->ISR & UART_FLAG_RXNE)
   {
     return TRUE;
   }
-  else
-  {
-    return FALSE;
-  }
+  return FALSE;
 }
+
 
 /*
  * Altera Niche Stack Nios port modification:
@@ -499,14 +424,10 @@ void cticks_hook(void)
 #endif /* SUPERLOOP */
 
 /* Level of Nesting in irq_Mask() and irq_Unmask() */
-int irq_level = 0;
+unsigned int irq_level = 0;
 
 /* Latch on to Altera's NIOS2 BSP */
-static int cpu_statusreg;
-
-#ifdef NOT_DEF
-#define IRQ_PRINTF   1
-#endif
+static OS_CPU_SR _cpu_statusreg;
 
 /* Disable Interrupts */
 
@@ -525,9 +446,13 @@ static int cpu_statusreg;
  */
 void irq_Mask(void)
 {
+   OS_CPU_SR cpu_statusreg_sr;
+
+   cpu_statusreg_sr = OS_CPU_SR_Save();
+
    if (++irq_level == 1)
    {
-      cpu_statusreg = CPU_SR_Save();
+      _cpu_statusreg = cpu_statusreg_sr;
    }
 }
 
@@ -537,7 +462,7 @@ void irq_Unmask(void)
 {
    if (--irq_level == 0)
    {
-      CPU_SR_Restore(cpu_statusreg);
+      OS_CPU_SR_Restore(_cpu_statusreg);
    }
 }
 
@@ -555,7 +480,7 @@ void irq_Unmask(void)
 u_long
 get_ptick(void)
 {
-   return (OSTimeGet());
+   return ((u_long)osGetSystemTime());
 }
 
 #endif  /* USE_PROFILER */

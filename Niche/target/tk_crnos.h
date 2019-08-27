@@ -17,19 +17,15 @@
 #error - must define CHRONOS in ipport.h to use this file
 #endif
 
+extern OsSemaphore rcvdq_sem_ptr;
 
 /* Define the CHRONOS object control TK_ macros...  */
-typedef OS_EVENT * 				os_sema;						/* 信号量 */
-typedef u_char     			 	os_object;						/* 任务句柄 */
-#define OS_TimeDly(cnt)		  	OSTimeDly(cnt)					/* 延时函数 */
-#define OS_SEM_TIMEOUT        	OS_ERR_TIMEOUT
-#define OS_NONE_ERR           	OS_ERR_NONE
 
 /* macros for task type, entry, and name */
 #define  TK_ENTRY(name)       	void  name(void * parm)
-#define  TK_OBJECT(name)      	os_object   name
-#define  TK_OBJECT_PTR(name)  	os_object * name
-#define  TK_OBJECT_REF(name)  	TK_OBJECT(name)
+#define  TK_OBJECT(name)      	OsTask   name
+#define  TK_OBJECT_PTR(name)  	OsTask * name
+#define  TK_OBJECT_REF(name)  	OsTask   name
 #define  TK_ENTRY_PTR(name)   	void(*name)(void*)
 
 #define  TK_THIS              	TK_OSTaskQuery()
@@ -71,21 +67,15 @@ extern   TK_OBJECT(to_ftpclnt);
 /* map TK_ macros to CHRONOS: */
 #define  TK_BLOCK()          OSTaskSuspend(OS_PRIO_SELF)
 
-extern os_sema rcvdq_sem_ptr;
-#define  TK_NETRX_BLOCK()    { \
-	                       		uint8_t err; \
-	                       		OSSemPend(rcvdq_sem_ptr, TPS, &err); \
-	                       		if ((err != OS_NONE_ERR) && (err != OS_SEM_TIMEOUT)) \
-                                  dtrap(); \
-	                     	}
+#define  TK_NETRX_BLOCK()    status = osWaitForSemaphore(&rcvdq_sem_ptr, TPS)
 
-#define  TK_SLEEP(count)     OS_TimeDly(count + 1)
+#define  TK_SLEEP(count)     osDelayTask(count + 1)
 
 /* (Id) is always of type TK_OBJECT_PTR */
-#define  TK_WAKE(Id)         OSTaskResume(*(os_object*)(Id))
+#define  TK_WAKE(Id)         OSTaskResume((Id)->prio)
 
 /* (ev) is always of type TK_OBJECT_REF */
-#define  TK_WAKE_EVENT(ev)   OSTaskResume((os_object)(ev))
+#define  TK_WAKE_EVENT(ev)   OSTaskResume((ev).prio)
 
 /* Do tk_yield() as a function to avoid pointless delays */
 void tk_yield(void);
@@ -96,8 +86,8 @@ void tk_yield(void);
  * task to runnable. This is so we can call it from an ISR and not have
  * ChronOS enable interrupts on us.
  */
-#define  SignalPktDemux()     OSSemPost(rcvdq_sem_ptr)
-#define  SignalFtpClient()    OSTaskResume(to_ftpclnt)
+#define  SignalPktDemux()     osReleaseSemaphore(&rcvdq_sem_ptr)
+#define  SignalFtpClient()    OSTaskResume(to_ftpclnt.prio)
 
 #endif  /* TK_CRNOS_H */
 

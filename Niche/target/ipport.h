@@ -20,7 +20,6 @@
 #ifndef _IPPORT_H_
 #define _IPPORT_H_ 1
 
-#include "stdint.h"
 
  /*
   * Altera Niche Stack Nios port modification:
@@ -43,12 +42,17 @@
  */
 #ifndef _IN_TTYIO_
 #ifdef NOT_USED
-#include <stdio.h>   /* C compiler files */
+#include <stdio.h> /* C compiler files */
 #endif
 #endif
+#include <stddef.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdint.h>
+#include "error.h"
+#include "debug.h"
 
 /*
  * Altera Niche Stack Nios port modifcation:
@@ -95,9 +99,9 @@
 #define BIG_ENDIAN    4321
 #define BYTE_ORDER    LITTLE_ENDIAN
  
-#define STK_TOPDOWN     1  /* Stacks grow "top down" */
 #define ALIGN_TYPE   4  /* 32 bit alignment */
 
+#define BUTTON              1
 /* define Ethernet header size and offset */
 #define ETH_ADDR_LEN    (6)
 #define ETH_TYPE_LEN    (2)
@@ -125,9 +129,7 @@
 #define HUGE
 #endif
 
-#ifdef NOT_USED
 #define SOCKERRORS_ALREADY    1  /* uC/OS-II defines common errno() errors */
-#endif
 
 #define NO_TIME_T       1     /* use definitions in time.h */
 
@@ -141,12 +143,7 @@
  * settings, or BSP build flow BSP settings, into the system.h file.
  */
 #ifdef ALT_INICHE
-#ifdef NOT_USED
-#include "system.h"
-#endif
-//#ifdef NOT_USED
 #define DHCP_CLIENT   1   /* include DHCP client code */
-//#endif
 #define TCP_ZEROCOPY   1   /* use Sockets zero-copy extensions */
 #define IP_FRAGMENTS   1   /* IP fragment reassembly */
 #define INCLUDE_TCP   1   /* this link will include NetPort TCP w/MIB */
@@ -160,19 +157,16 @@
 #define NB_CONNECT   1   /* support Non-Blocking connects (TCP, PPP, et al) */
 #define IP_ROUTING   1   /* do real IP routing, not imbedded agent fake route */
 #define IP_RAW   1   /* build raw sockets support */
-#ifdef NOT_USED
 #define IP_MULTICAST   1   /* support IP multicast capability in stack */
-#endif
 #define BLOCKING_APPS   1   /* applications block rather than poll */
-#define DNS_CLIENT   1   /* include DNS client code */
+#define INCLUDE_INICHE_LOG 1
 /* Options which are disabled by default */
+#define DNS_CLIENT  1 /* include DNS client code */
+#define TCP_ECHOTEST 1 /* include a TCP Echo test */
 #ifdef NOT_USED
 
-#define DNS_CLIENT   1   /* include DNS client code */
-#define BOOTPTAB   1   /* DHCP supports a UNIX-ish bootptab file */
 #define BTREE_ROUTES   1   /* Use binary tree IP route lookup */
 #define NO_UDP_CKSUM   1   /* omit code for UDP checksums */
-#define TCP_ECHOTEST   1   /* include a TCP Echo test */
 #define TCP_SACK   1   /* Selective ACK per rfc2018 */
 #define TCP_TIMESTAMP      
 #define TCP_WIN_SCALE      
@@ -181,7 +175,7 @@
 #define DYNAMIC_IFACES   1   /* Support runtime creation of interfaces */
 #define IEEE_802_3   1   /* Support IEEE 802.3 (RFC-1042) */
 #define IP_PMTU   1   /* path MTU discovery */
-#define IP_RAW_ACCESS   1   /* allow direct-receive of IP datagrams */
+
 #define LOSSY_IO   1   /* Do lossy packet IO for testing */
 #define RAWIPTEST   1   /* Test for raw sockets */
 #define ROUTE_TEST   1   /* Add menu & pseudo device for route metrics */
@@ -196,10 +190,6 @@
 
 #endif /* NOT_USED */
 
-
-#ifdef IP_FRAGMENTS
-#define MAX_FRAG_PKTS      5  /* max IP pkts we can simultaneously reassemble */
-#endif /* IP_FRAGMENTS */
 
 #ifdef DNS_CLIENT
 #define MAXDNSSERVERS      3  /* max # of DNS servers to look at */
@@ -217,44 +207,33 @@
 #define INICHE_TIMERS   1   /* Provide Interval timers */
 
 #define TK_STDIN_DEVICE   1   /* Include stdin (uart) console code */
-#ifdef NOT_USED
 
-#define TK_STDIN_DEVICE   1   /* Include stdin (uart) console code */
 
-#endif /* NOT_USED */
 
 
 /**** MiscLib Options *********************************************************/
 
 extern void exit(int code);
 #define INCLUDE_LOCAL_TIME 1
-#define HEAP_STATS   1   /* include the heap statistics menu */
 #define IN_MENUS   1   /* support for InterNiche menu system */
+#define PING_APP   1   /* application provides a pingUpcall */
+#define HEAP_STATS   1   /* include the heap statistics menu */
 #define TESTMENU   1   /* Include special tests in menu */
-#define PING_APP   1   /* application provides a pingUpcall */
-#ifdef NOT_USED
-#define IN_MENUS   1   /* support for InterNiche menu system */
-#define PING_APP   1   /* application provides a pingUpcall */
 #define INCLUDE_NVPARMS   1   /* non-volatile (NV) parameters logic */
-#define MEM_BLOCKS   1   /* old memory debug system */
 #define MEM_WRAPPERS   1   /* include debug wrappers on heap calls */
+#ifdef NOT_USED
 #define PKT_CYCLES   1   /* Include Code to measure Packet Cycles */
-#define HEAP_STATS   1   /* include the heap statistics menu */
 #define PFDEBUG   1   /* Enable profiler debug code */
 #define RF_SIMULATION   1   /* simulate wireless networks */
-#define TESTMENU   1   /* Include special tests in menu */
 #define PING_REQ_OUTDEV 1 /* PING stops if console/socket unavailable */
-
-#endif /* NOT_USED */
-
-
+#endif                    /* NOT_USED */
 
 /**** "net" Options *********************************************************/
+#define QUEUE_CHECKING    1             /* include code to check critical queues */
 #ifdef NOT_USED
 
 #define LOCKNET_CHECKING   1   /* Check protection of net resources */
 #define MAC_LOOPBACK   1   /* use MAC layer pseudo-Ethernet loopback driver */
-#define QUEUE_CHECKING   1   /* include code to check critical queues */
 
 #endif /* NOT_USED */
 
@@ -274,35 +253,25 @@ extern void exit(int code);
 
 /**** FTP Options *********************************************************/
 #define FTP_SERVER         1  /* include FTP server code */
+#define FTP_IDLECONN_TMO  1
+#define FTP_CLIENT        1             /* include FTP client code */
+
 #ifdef NOT_USED
+#define DRIVE_LETTERS     1
+#endif
 
-#define FTP_SERVER         1  /* include FTP server code */
-#define FTP_CLIENT         1  /* include FTP client code */
-#define DRIVE_LETTERS    1
-#define FTP_IDLECONN_TMO 1
-
-#endif /* NOT_USED */
-
-#define MAXSENDLOOPS      50  /* MAX number of FTP server send loops */
-
+#define MAXSENDLOOPS      50            /* MAX number of FTP server send loops */
 
 /**** Syslog Options ******************************************************/
-
-#ifdef NOT_USED
-
 #define INICHE_SYSLOG    1  /* support syslog client */
 #define USE_SYSLOG_QUEUE 1  /* use queue for syslogs */
 #define USE_SYSLOG_TASK  1  /* use task (not timer) for syslogs */
 
-#endif /* NOT_USED */
 
-#define TELNET_SVR       1 /* then include this source file */
 /**** Telnet Options *********************************************************/
-#ifdef NOT_USED
 
 #define TELNET_SVR       1 /* then include this source file */
 
-#endif /* NOT_USED */
 
 
 
@@ -315,16 +284,17 @@ extern void exit(int code);
 #define TFTP_SERVER   1   /* include TFTP server code */
 
 #endif /* NOT_USED */
+/**** Webserver Options *********************************************************/
 
+#define WEBPORT           1           /* enable any webport application */
 
 
 /**** VFS Options *********************************************************/
 #define VFS_FILES          1  /* include Virtual File System */
 #define USE_MEMDEV         1  /* Psuedo VFS files mem and null */
-
+#define VFS_UNIT_TEST       1 /* Include in VFS test menu */
 #ifdef NOT_USED
 
-#define VFS_UNITTEST       1  /* Include in VFS test menu */
 #define VFS_VERBOSE        1  /* Compile VFS in verbose debug mode */
 
 #endif /* NOT_USED */
@@ -342,43 +312,22 @@ extern void exit(int code);
 #define C_CHECKSUM      1     /* C checksum function only */
 #endif /* NOT_USED */
 
-#define DELAY_REPLY     1     /* process incoming packets in background loop */
-
-
-/* task stack sizes */
-#define  NET_STACK_SIZE       (256)
-#define  APP_STACK_SIZE       (256)
-#define  CLOCK_STACK_SIZE     (APP_STACK_SIZE / 2)
-
-#define  IO_STACK_SIZE        (APP_STACK_SIZE)
-#define  WEB_STACK_SIZE       (APP_STACK_SIZE)
-#define  FTP_STACK_SIZE       (APP_STACK_SIZE * 2)
-#define  PING_STACK_SIZE      (APP_STACK_SIZE)
-#define  TN_STACK_SIZE        (APP_STACK_SIZE)
-#define  TCP_ECHO_STACK_SIZE  (APP_STACK_SIZE)
-
-#ifdef NOT_USED
 /* Options for setting the RTOS priorities and stack sizes
  * for the various tasks used by the stack 
  */
 
 /* task stack sizes */
-#define  DEMO_STACK_SIZE      (4096+8192)
+#define NET_STACK_SIZE      (1024)
+#define APP_STACK_SIZE      (1024)
+#define CLOCK_STACK_SIZE    (APP_STACK_SIZE / 2)
 
-#define  NETHEAP_SIZE         0x30000
+#define IO_STACK_SIZE       (APP_STACK_SIZE / 2)
+#define WEB_STACK_SIZE      (APP_STACK_SIZE / 2)
+#define FTP_STACK_SIZE      (APP_STACK_SIZE)
+#define PING_STACK_SIZE     (APP_STACK_SIZE / 2)
+#define TN_STACK_SIZE       (APP_STACK_SIZE / 2)
+#define TCP_ECHO_STACK_SIZE (APP_STACK_SIZE / 2)
 
-/* task stack sizes */
-#define  NET_STACK_SIZE       (4096+8192)
-#define  APP_STACK_SIZE       (6144+8192) /* 4096 */     /* default for applications */
-#define  CLOCK_STACK_SIZE     (4096+8192)
-
-#define  IO_STACK_SIZE        (2048+8192)
-#define  WEB_STACK_SIZE       (APP_STACK_SIZE+8192)
-#define  FTP_STACK_SIZE       APP_STACK_SIZE
-#define  PING_STACK_SIZE      (4096+8192)
-#define  TN_STACK_SIZE        APP_STACK_SIZE
-#define  TCP_ECHO_STACK_SIZE  APP_STACK_SIZE
-#endif
 /* TK_NETMAIN and TK_NETTICK are always used by NicheStack */
 /* These priorities must be defined */
 
@@ -387,40 +336,81 @@ extern void exit(int code);
  * than Niche stack, all Niche stack task priority assignments must be 
  * adjusted down (to higher interger values).
  */
+#define TK_ETHIF_PRIO       0
+#define TK_ETHIF_SSIZE      (NET_STACK_SIZE / 4)
+
+#ifndef NO_INET_STACK
 #define TK_NETMAIN_TPRIO    1
 #define TK_NETMAIN_SSIZE    NET_STACK_SIZE
+#endif
+
+#ifndef NO_INET_TICK
 #define TK_NETTICK_TPRIO    2
 #define TK_NETTICK_SSIZE    CLOCK_STACK_SIZE
+#endif
+
+#ifdef TCP_ECHOTEST
 #define TK_ECHOTEST_TPRIO   3
 #define TK_ECHOTEST_SSIZE   TCP_ECHO_STACK_SIZE
-#define TK_CIPHERTEST_TPRIO 4
-#define TK_CIPHERTEST_SSIZE APP_STACK_SIZE
+#endif
+
+#ifdef WEBPORT
+#define TK_WEBPORT_TPRIO    4
+#define TK_WEBPORT_SSIZE    APP_STACK_SIZE
+#endif /* WEBPORT */
+
+#ifdef FTP_CLIENT
 #define TK_FTPCLNT_TPRIO    5
 #define TK_FTPCLNT_SSIZE    FTP_STACK_SIZE
+#endif
+
+#ifdef FTP_SERVER
 #define TK_FTPSRVR_TPRIO    6
 #define TK_FTPSRVR_SSIZE    FTP_STACK_SIZE
+#endif
+
+#ifdef TELNET_SVR
 #define TK_TELNETSRV_TPRIO  7
 #define TK_TELNETSRV_SSIZE  APP_STACK_SIZE
+#endif
+
+#ifdef TK_STDIN_DEVICE
 #define TK_KEYBOARD_TPRIO   8
 #define TK_KEYBOARD_SSIZE   IO_STACK_SIZE
+#endif
+
+#ifdef PING_APP
 #define TK_PINGCHECK_TPRIO  9
 #define TK_PINGCHECK_SSIZE  PING_STACK_SIZE
-#define TK_SNTPC_TPRIO      10
-#define TK_SNTPC_SSIZE      APP_STACK_SIZE
+#endif
+
+#ifdef INICHE_SYSLOG
 #define TK_SYSLOG_TPRIO     10
 #define TK_SYSLOG_SSIZE     APP_STACK_SIZE
+#endif
+
+#ifdef BUTTON
+#define TK_BTN_TPRIO        11
+#define TK_BTN_SSIZE        (APP_STACK_SIZE / 4)
+#endif
+
+#define TK_STARTUP_TPRIO    12
+#define TK_STARTUP_SSIZE    (APP_STACK_SIZE / 4)
 
 /* library definitions */
 
 /*   moved to libport.h_h */
 
 #ifdef NATIVE_PRINTF
+
 /*
  * Use native printf from the C library for debug output.
  */
 #define dprintf  printf
 #define dputchar putchar
-#else
+
+#else /* NATIVE_PRINTF */
+
 /*
 ** Use UART driver for debug output
 */
@@ -428,13 +418,16 @@ extern void exit(int code);
 #undef putchar
 #endif
 #define putchar dputchar
-#define printf  dprintf
+#define printf dprintf
+
 #ifndef _IN_TTYIO_
-void dprintf( char *, ... );
+int dprintf(CONST char * fmt, ...);
+int printf(CONST char * fmt, ...);
+
 #endif
-void dputchar( int );
-#endif
-int vsprintf(char * buf, CONST char * fmt, va_list a);
+
+void dputchar(int chr);
+#endif /* NATIVE_PRINTF */
 
 /* Send startup errors to the right place */
 #define initmsg  dprintf
@@ -443,6 +436,8 @@ int vsprintf(char * buf, CONST char * fmt, va_list a);
 extern int ns_printf( void * pio, char * format, ... );
 extern int sprintf(char * buf, CONST char *   fmt, ...);
 extern int snprintf(char * buf, unsigned buflen, CONST char * fmt, ...);
+extern int vsprintf(char * buf, CONST char *fmt, va_list a);
+
 /* file system definitions */
 
 #ifdef VFS_FILES
@@ -500,11 +495,9 @@ void clock_c(void);      /* undo clock_init (ie: restore ISR vector */
  * a shared resource, the other is a CRITICAL SECTION frame. You should
  * use one or the other, not both. See manual for details.
  */
-#include "ucos_ii.h"
+#include "os_port.h"
 #include "tk_crnos.h"
 
-#define USE_RESOURCE_LOCKS 1
-#define BLOCKING_APPS      1  /* applications block rather than poll */
 #define TCPWAKE_ALREADY    1  /* ChronOS has it's own tcp_sleep & tcp_wakeup */
 /* use the sleep/wakeup in misclib/netmain.c */
 #ifdef NOT_USED
@@ -576,16 +569,13 @@ int   prep_ifaces(int firstIface);   /* set up interfaces */
 
 /* 
  * define number and sizes of free packet buffers 
- * 此处大小不能把 heap 全部占完，要留一部分给其它用，比如 telnet
  */
-#define NUMBIGBUFS   7
-#define NUMLILBUFS   17
+#define NUMBIGBUFS 20
+#define NUMLILBUFS 40
+#define MAXPACKETS (NUMLILBUFS + NUMBIGBUFS)
 
-/* some maximum packet buffer numbers */
-#define MAXBIGPKTS   NUMBIGBUFS
-#define MAXLILPKTS   NUMLILBUFS
-#define MAXPACKETS   (MAXLILPKTS + MAXBIGPKTS)
-
+#define HEAP_START (void *)0x30000000
+#define HEAP_SIZE  (long)0x00020000
 
 /********************* ipport.h_h common ****************************/
 
@@ -606,10 +596,16 @@ int   prep_ifaces(int firstIface);   /* set up interfaces */
  * The web server frequently uses packets of about 160 bytes, so
  * increase the small packet size, rather than use large buffers.
  */
-#ifndef BIGBUFSIZE
-#define BIGBUFSIZE      1536
+#ifdef NPDEBUG
+#define BIGBUFSIZE   1536 + 5
+
+#ifdef WEBPORT
+#define LILBUFSIZE    200 + 5
+#else
+#define LILBUFSIZE    200 + 5
 #endif
-#ifndef LILBUFSIZE
+#else
+#define BIGBUFSIZE   1536
 #ifdef WEBPORT
 #define LILBUFSIZE      200
 #else
@@ -714,8 +710,8 @@ int   prep_ifaces(int firstIface);   /* set up interfaces */
 /* Functions invoked to wait for or signal the occurence of events significant
  * to the PING client and the FTP client tasks.
  */
-void wait_app_sem (unsigned long int semid);
-void post_app_sem (unsigned long int semid);
+void wait_app_sem (long int semid);
+void post_app_sem (long int semid);
 
 
 /* Global variables */
@@ -817,55 +813,18 @@ unsigned short cksum(void *, unsigned);
 #include "libport.h"
 #endif
 
-/*  If DHCP will not be used, select valid static IP addresses here, for example:
- *           IP: 192.168.1.234
- *      Gateway: 192.168.1.1
- *  Subnet Mask: 255.255.255.0
- */
-
 /********************* ipport.h_h common ****************************/
-#define IPADDR0 169
-#define IPADDR1 254
-#define IPADDR2 134
-#define IPADDR3 169
-
-#define GWADDR0 10
-#define GWADDR1 3
-#define GWADDR2 2
-#define GWADDR3 254
-
-#define MSKADDR0 255
-#define MSKADDR1 255
-#define MSKADDR2 255
-#define MSKADDR3 0
-
-#define MACADDR0 0x00
-#define MACADDR1 0x07
-#define MACADDR2 0xED
-#define MACADDR3 0xFF
-#define MACADDR4 0xEE
-#define MACADDR5 0xAA
-
-#define ip4_addr1(ipaddr) ((unsigned int)(ntohl(ipaddr) >> 24) & 0xff)
-#define ip4_addr2(ipaddr) ((unsigned int)(ntohl(ipaddr) >> 16) & 0xff)
-#define ip4_addr3(ipaddr) ((unsigned int)(ntohl(ipaddr) >> 8)  & 0xff)
-#define ip4_addr4(ipaddr) ((unsigned int)(ntohl(ipaddr))       & 0xff)
-
-
-#define IP4_ADDR(ipaddr, a, b, c, d) ipaddr =                                           \
-        htonl((((unsigned long)(a & 0xff) << 24) | ((unsigned long)(b & 0xff) << 16) |  \
-        ((unsigned long)(c & 0xff) << 8) | (unsigned long)(d & 0xff)))
 
 /*
  * Altera Niche Stack Nios port modifications:
  * - Prototypes to remove build warning.
  */
 #define ALT_MAX_FD 32
-void evtmap_setup(void);
+
 void iniche_init(void);
-int  ping_set_parm (u_long parm_type, u_long value);
-int  eth_devices_init(int iface);
-os_object TK_OSTaskQuery(void);
+int eth_dev_init(int iface);
+OsTask TK_OSTaskQuery(void);
+
 
 #endif  /* _IPPORT_H_ */
 

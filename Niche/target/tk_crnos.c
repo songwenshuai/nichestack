@@ -17,6 +17,11 @@
 
 #include "ipport.h"
 
+#if (OS_TRACE_EN > 0u)
+/* SEEGER */
+#include  <os_trace.h>
+#endif
+
 #ifdef CHRONOS
 
 
@@ -48,7 +53,7 @@ u_long tcp_sleep_timeout = 0;
 void tcp_sleep(void * event)
 {
    int i;
-   uint8_t err;
+   int status;
 
    for (i = 0; i < GLOBWAKE_SZ; i++)
    {
@@ -68,8 +73,8 @@ void tcp_sleep(void * event)
          UNLOCK_NET_RESOURCE(NET_RESID);
 
          /* don't wait forever in case we miss the event */
-         OSSemPend(global_TCPwakeup_set[i].semaphore, TPS, &err);
-         if (err == OS_SEM_TIMEOUT)
+         status = osWaitForSemaphore(&global_TCPwakeup_set[i].semaphore, TPS);
+         if (!status)
          {
             ++tcp_sleep_timeout;
 
@@ -109,14 +114,14 @@ void tcp_wakeup(void *event)
 {
    int i;
 
-   OSSchedLock();
+   osSuspendAllTasks();
 
    for (i = 0; i < GLOBWAKE_SZ; i++)
    {
       if ((global_TCPwakeup_set[i].ctick != 0) && (global_TCPwakeup_set[i].soc_event == event))
       {
          /* signal the event */
-         OSSemPost(global_TCPwakeup_set[i].semaphore);
+         osReleaseSemaphore(&global_TCPwakeup_set[i].semaphore);
 
          /* clear the entry */
          global_TCPwakeup_set[i].ctick = 0;
@@ -126,27 +131,27 @@ void tcp_wakeup(void *event)
       }
    }
 
-   OSSchedUnlock();
+   osResumeAllTasks();
 }
 #endif
 
 
-os_object TK_OSTaskQuery(void)
+OsTask TK_OSTaskQuery(void)
 {
    OS_TCB task_data;
-   uint8_t err, task_prio;
+   OsTask task_prio;
+   uint8_t err;
 
    err = OSTaskQuery(OS_PRIO_SELF, &task_data);
 
-   if (err == OS_NONE_ERR)
+   if (err == OS_ERR_NONE)
    {
-      task_prio = task_data.OSTCBPrio;
+      task_prio.prio = task_data.OSTCBPrio;
    }
    else
    {
       dprintf("ChronOS API call failure, unable to identify task!");
       panic("TK_OSTaskQuery");
-      return 0;
    }
    
    return task_prio;
@@ -160,7 +165,7 @@ void tk_yield(void)
     * delay by two ticks, but that really hurts performance on some
     * long-tick targets. One tick works better overall....
     */
-   OS_TimeDly(1);
+   osDelayTask(1);
 }
 
 
@@ -171,8 +176,8 @@ int tk_stats(void * pio)
    OS_TCB * tcb;  /* ChronOS Task Control Block */
    OS_STK * sp;   /* scratch stack pointer */
    int      stackuse;
-   char     name[OS_TASK_NAME_SIZE+1];
-   uint8_t    err;
+   INT8U     **name;
+   INT8U    err;
 
    ns_printf(pio, "Counter of number of context switches:  %lu\n", OSCtxSwCtr);
 
@@ -186,9 +191,9 @@ int tk_stats(void * pio)
       if ((tcb == NULL) || (tcb == (OS_TCB *)1))
          continue;
 
-      OSTaskNameGet(tcb->OSTCBPrio, (uint8_t *)&name, &err);
+      OSTaskNameGet(tcb->OSTCBPrio, name, &err);
 
-      ns_printf(pio, "%15s %2d    0x%04x,    ---   ", name, tcb->OSTCBPrio, tcb->OSTCBStat);
+      ns_printf(pio, "%15s %2d    0x%04x,    %d\t", *name, tcb->OSTCBPrio, tcb->OSTCBStat, tcb->OSTCBCtxSwCtr);
 
       /* Find lowest non-zero value in stack so we can estimate the
        * unused portion. Subtracting this from size gives us the used

@@ -43,6 +43,7 @@ struct inet_taskinfo {
    TK_ENTRY_PTR(entry);    /* pointer to code to start task at */
    int   priority;         /* priority of task */
    int   stacksize;        /* size (bytes) of task's stack */
+   char* stackbase;        /* base of task's stack */
 };
 
 int TK_NEWTASK(struct inet_taskinfo * nettask);
@@ -71,8 +72,8 @@ struct wake_event
 struct TCP_PendPost
 {
    u_long   ctick;           /* time entry was added */
-   void     *soc_event;      /* wakeup event */	
-   os_sema  semaphore;      /* semaphore to wait on */
+   void     *soc_event;      /* wakeup event */ 
+   OsSemaphore semaphore;      /* semaphore to wait on */
 };
  
 #ifdef MINI_IP
