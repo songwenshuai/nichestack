@@ -56,7 +56,7 @@ prep_ifaces(int ifaces_found)
 
    ifNumber = ifaces_found;   /* set global interface counter */
 
-   printf("prepped %u interface%s, initializing...\n", 
+   initmsg("prepped %u interface%s, initializing...\n", 
       ifaces_found, ifaces_found==1?"":"s");
 
    return ifaces_found;

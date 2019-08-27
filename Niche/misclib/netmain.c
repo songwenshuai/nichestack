@@ -145,7 +145,6 @@ TK_ENTRY(BtnTask);
 
 TK_OBJECT(to_EthifTask);
 TK_ENTRY(EthifTask);
-
 /* 
  * Altera Niche Stack Nios port modification:
  * Defines for the priorities and stack sizes are setup 
@@ -304,7 +303,6 @@ netmain(void)
 TK_ENTRY(tk_netmain)
 {
    USE_ARG(parm);  /* TK_ENTRY macro defines tk_netmain with 1 arg parm */
-   int status;
 
    netmain_init(); /* initialize all modules */
 

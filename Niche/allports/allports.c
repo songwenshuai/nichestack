@@ -458,7 +458,7 @@ netmain_init(void)
 #endif /* DHCP_SERVER */
 
 #ifdef IN_MENUS
-   printf(prompt);
+   printf("%s",prompt);
 #endif
 
 #ifdef UDPSTEST
@@ -622,7 +622,7 @@ icmp_port_du(PACKET p, struct destun * pdp)
 {
    dprintf("got ICMP %s UNREACHABLE from %s\n", 
       icmpdu_types[(int)(pdp->dtype)], print_ipad(p->fhost) );
-   dprintf(prompt);
+   dprintf("%s",prompt);
 }
 #endif   /* FULL_ICMP */
 

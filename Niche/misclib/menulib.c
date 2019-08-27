@@ -392,7 +392,7 @@ send_grat_arp(void * pio)
 {
    char *   cp;
    struct net * ifp;
-   int  flag;
+   int  flag=0;
 
    ifp = (NET)(netlist.q_head);   /* default to first net */
 

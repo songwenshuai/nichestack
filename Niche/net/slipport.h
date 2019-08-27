@@ -16,6 +16,7 @@
 
 #include "ipport.h"
 
+#include UART_INCLUDE
 
 #define  _NSLIP   1  /* number of slip lines to support */
 

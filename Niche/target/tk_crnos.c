@@ -55,6 +55,7 @@ void tcp_sleep(void * event)
    int i;
    int status;
 
+   osSuspendAllTasks();
    for (i = 0; i < GLOBWAKE_SZ; i++)
    {
       if (global_TCPwakeup_set[i].soc_event == NULL)
@@ -63,7 +64,12 @@ void tcp_sleep(void * event)
          global_TCPwakeup_set[i].ctick = cticks;
          if (i > global_TCPwakeup_setIndx)
             global_TCPwakeup_setIndx = i;
-
+         break;
+      }
+   }
+   osResumeAllTasks();
+    
+   if ( i != GLOBWAKE_SZ ) {
          tcp_sleep_count++;
 
          /* Give up the lock before going to sleep. This can
@@ -86,7 +92,6 @@ void tcp_sleep(void * event)
          /* Regain the lock */
          LOCK_NET_RESOURCE(NET_RESID);
          return;
-      }
    }
 
    /* The table is full. Try calling TK_YIELD() and hope for the best.

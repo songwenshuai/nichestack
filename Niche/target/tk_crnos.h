@@ -67,7 +67,7 @@ extern   TK_OBJECT(to_ftpclnt);
 /* map TK_ macros to CHRONOS: */
 #define  TK_BLOCK()          OSTaskSuspend(OS_PRIO_SELF)
 
-#define  TK_NETRX_BLOCK()    status = osWaitForSemaphore(&rcvdq_sem_ptr, TPS)
+#define  TK_NETRX_BLOCK()    int status = osWaitForSemaphore(&rcvdq_sem_ptr, TPS)
 
 #define  TK_SLEEP(count)     osDelayTask(count + 1)
 
