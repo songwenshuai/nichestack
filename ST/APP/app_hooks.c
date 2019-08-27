@@ -36,7 +36,6 @@
 */
 
 #include  <os.h>
-#include  <bsp_led.h>
 
 /*
 *********************************************************************************************************
@@ -152,7 +151,6 @@ void  App_TaskDelHook (OS_TCB *ptcb)
 #if OS_VERSION >= 251
 void  App_TaskIdleHook (void)
 {
-    BSP_LED_Toggle(USER_LD1);
 }
 #endif
 
@@ -218,7 +216,6 @@ void  App_TaskSwHook (void)
 #if (APP_CFG_PROBE_OS_PLUGIN_EN > 0) && (OS_PROBE_HOOKS_EN > 0)
     OSProbe_TaskSwHook();
 #endif
-    BSP_LED_Toggle(USER_LD2);
 }
 #endif
 
@@ -255,6 +252,12 @@ void  App_TCBInitHook (OS_TCB *ptcb)
 * Note(s)     : (1) Interrupts may or may not be ENABLED during this call.
 *********************************************************************************************************
 */
+/*
+ * Iniche stack has no header declaration for its timer 'hook'.
+ * Do that here to avoid build warnings.
+ */
+void cticks_hook(void);
+void HAL_IncTick(void);
 
 #if OS_TIME_TICK_HOOK_EN > 0
 void  App_TimeTickHook (void)
@@ -262,7 +265,11 @@ void  App_TimeTickHook (void)
 #if (APP_CFG_PROBE_OS_PLUGIN_EN == DEF_ENABLED) && (OS_PROBE_HOOKS_EN > 0)
     OSProbe_TickHook();
 #endif
-    BSP_LED_Toggle(USER_LD3);
+
+    /* Service the Interniche timer */
+    cticks_hook();
+
+    HAL_IncTick();
 }
 #endif
 #endif

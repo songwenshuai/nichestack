@@ -36,15 +36,14 @@
 #define OS_EVENT_MULTI_EN         1u   /* Include code for OSEventPendMulti()                          */
 #define OS_EVENT_NAME_EN          1u   /* Enable names for Sem, Mutex, Mbox and Q                      */
 
-//设 定系 统 中的 任务最低优先级 （ 最大优先级数 ）, 用户任务的优先级可以从 0 到 OS_LOWEST_PRIO-2 数值越小, 优先级越高
-#define OS_LOWEST_PRIO           63u   /* Defines the lowest priority that can be assigned ...         */
+#define OS_LOWEST_PRIO           16u   /* Defines the lowest priority that can be assigned ...         */
                                        /* ... MUST NEVER be higher than 254!                           */
 
 #define OS_MAX_EVENTS            40u   /* Max. number of event control blocks in your application      */
 #define OS_MAX_FLAGS              5u   /* Max. number of Event Flag Groups    in your application      */
 #define OS_MAX_MEM_PART           5u   /* Max. number of memory partitions                             */
 #define OS_MAX_QS                 4u   /* Max. number of queue control blocks in your application      */
-#define OS_MAX_TASKS             20u   /* Max. number of tasks in your application, MUST be >= 2       */
+#define OS_MAX_TASKS             15u   /* Max. number of tasks in your application, MUST be >= 2       */
 
 #define OS_SCHED_LOCK_EN          1u   /* Include code for OSSchedLock() and OSSchedUnlock()           */
 

@@ -57,9 +57,6 @@
 
 #define  OS_TASK_TMR_PRIO                (OS_LOWEST_PRIO - 2u)  /* Only required for uC/OS-II                           */
 
-#define  APP_CFG_STARTUP_TASK_PRIO                         3u
-#define  APP_CFG_BTN_TASK_PRIO                             6u
-
 
 /*
 *********************************************************************************************************
@@ -67,9 +64,6 @@
 *                             Size of the task stacks (# of OS_STK entries)
 *********************************************************************************************************
 */
-
-#define  APP_CFG_STARTUP_TASK_STK_SIZE                   256u
-#define  APP_CFG_Btn_TASK_STK_SIZE                       512u
 
 
 /*
