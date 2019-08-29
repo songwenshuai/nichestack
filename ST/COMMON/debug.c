@@ -4,7 +4,6 @@
 #include "stm32h7xx_hal.h"
 #include "debug.h"
 
-extern UART_HandleTypeDef huart3;
 extern void  dputchar(int chr);
 
 /**

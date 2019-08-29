@@ -36,6 +36,7 @@
 #include "in_utils.h"
 #include "memwrap.h"
 #include "ifec.h"
+#include "bsp_usart.h"
 
 OsSemaphore mheap_sem_ptr;
 OsSemaphore rcvdq_sem_ptr;
@@ -295,7 +296,6 @@ void dtrap(void)
    printf("dtrap - needs breakpoint\n");
 }
 
-extern UART_HandleTypeDef huart3;
 
 /* FUNCTION: getch()
  *
@@ -307,15 +307,21 @@ extern UART_HandleTypeDef huart3;
  */
 int getch(void)
 {
-  int ch;
+#if 1 /* 从串口接收FIFO中取1个数据, 只有取到数据才返回 */
+   unsigned char chr;
 
-  ch = -1;
-  if (huart3.Instance->ISR & UART_FLAG_RXNE)
+   while (UART_GET_Char(COM3, &chr) == 0)
+   ;
+
+   return chr;
+#else
+  /* 等待接收到数据 */
+  while ((USART3->ISR & USART_ISR_RXNE) == 0)
   {
-    ch = huart3.Instance->RDR & 0xff;
   }
 
-  return ch;
+  return (int)USART3->RDR;
+#endif
 }
 
 /* FUNCTION: dputchar()
@@ -330,17 +336,26 @@ int getch(void)
  */
 void dputchar(int chr)
 {
-    /* Convert LF in to CRLF */
-    if (chr == '\n')
-    {
-      __HAL_UART_CLEAR_FLAG(&huart3, UART_FLAG_TC);
-      huart3.Instance->TDR = '\r';
-      while (__HAL_UART_GET_FLAG(&huart3, UART_FLAG_TC) == RESET);
-    }
+#if 1 /* 将需要printf的字符通过串口中断FIFO发送出去，printf函数会立即返回 */
+   /* Convert LF in to CRLF */
+   if (chr == '\n')
+   {
+      UART_SEND_Char(COM3,'\r');
+   }
 
-   __HAL_UART_CLEAR_FLAG(&huart3, UART_FLAG_TC);
-   huart3.Instance->TDR = chr;
-   while (__HAL_UART_GET_FLAG(&huart3, UART_FLAG_TC) == RESET);
+   UART_SEND_Char(COM3,chr);
+   //return chr;
+
+#else /* 采用阻塞方式发送每个字符,等待数据发送完毕 */
+   /* 写一个字节到USART1 */
+   USART3->TDR = chr;
+ 
+   /* 等待发送结束 */
+   while ((USART3->ISR & USART_ISR_TC) == 0)
+   ;
+
+   return chr;
+#endif
 }
 
 /* FUNCTION: kbhit()
@@ -353,7 +368,7 @@ void dputchar(int chr)
  */
 int kbhit(void)
 {
-  if(huart3.Instance->ISR & UART_FLAG_RXNE)
+  if(UART_RX_Empty(COM3))
   {
     return TRUE;
   }

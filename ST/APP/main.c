@@ -93,7 +93,7 @@ int  main (void)
     BSP_IntInit();                                              /* Initialize RAM interrupt vector table.               */
     BSP_OS_TickInit();                                          /* Initialize kernel tick timer                         */
     BSP_LED_Init();                                             /* Initialize LEDs                                      */
-    USART3_UART_Init();                                         /* Initialize UART                                      */
+    BSP_UART_Init();                                            /* Initialize UART                                      */
     FS_Init();
 #if (LIB_MEM_CFG_HEAP_SIZE > 0u)
     Mem_Init();                                                 /* Initialize Memory Managment Module                   */
