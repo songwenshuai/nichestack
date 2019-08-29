@@ -3,7 +3,6 @@
 #include "stm32h7xx_eth_driver.h"
 
 #include "os_port.h"
-#include "debug.h"
 
 #include "osport.h"
 #include "bsp_led.h"
@@ -265,7 +264,7 @@ static void lan8742EventHandler(void)
             ifp->n_mib->ifLastChange = cticks * (100 / TPS);
 #endif
             //Display link state
-            TRACE_INFO("Link is up ...\r\n");
+            printf("Link is up ...\r\n");
             //Read PHY special control/status register
             value = stm32h7xxEthReadPhyReg(LAN8742_PHY_ADDR, LAN8742_PHY_REG_PSCSR);
 
@@ -277,43 +276,43 @@ static void lan8742EventHandler(void)
                 iflinkspeed = NIC_LINK_SPEED_10MBPS;
                 ifduplexMode = NIC_HALF_DUPLEX_MODE;
                 //100BASE-TX
-                TRACE_INFO("Duplex mode = Half-Duplex\r\n");
+                printf("Duplex mode = Half-Duplex\r\n");
                 //10BASE-T
-                TRACE_INFO("Link speed = 10 Mbps\r\n");
+                printf("Link speed = 10 Mbps\r\n");
                 break;
             //10BASE-T full-duplex
             case PSCSR_HCDSPEED_10BT_FD:
                 iflinkspeed = NIC_LINK_SPEED_10MBPS;
                 ifduplexMode = NIC_FULL_DUPLEX_MODE;
                 //1000BASE-T
-                TRACE_INFO("Duplex mode = Full-Duplex\r\n");
+                printf("Duplex mode = Full-Duplex\r\n");
                 //10BASE-T
-                TRACE_INFO("Link speed = 10 Mbps\r\n");
+                printf("Link speed = 10 Mbps\r\n");
                 break;
             //100BASE-TX
             case PSCSR_HCDSPEED_100BTX:
                 iflinkspeed = NIC_LINK_SPEED_100MBPS;
                 ifduplexMode = NIC_HALF_DUPLEX_MODE;
                 //100BASE-TX
-                TRACE_INFO("Duplex mode = Half-Duplex\r\n");
+                printf("Duplex mode = Half-Duplex\r\n");
                 //100BASE-TX
-                TRACE_INFO("Link speed = 100 Mbps\r\n");
+                printf("Link speed = 100 Mbps\r\n");
                 break;
             //100BASE-TX full-duplex
             case PSCSR_HCDSPEED_100BTX_FD:
                 iflinkspeed = NIC_LINK_SPEED_100MBPS;
                 ifduplexMode = NIC_FULL_DUPLEX_MODE;
                 //1000BASE-T
-                TRACE_INFO("Duplex mode = Full-Duplex\r\n");
+                printf("Duplex mode = Full-Duplex\r\n");
                 //100BASE-TX
-                TRACE_INFO("Link speed = 100 Mbps\r\n");
+                printf("Link speed = 100 Mbps\r\n");
                 break;
             //Unknown operation mode
             default:
                 //10BASE-T
-                TRACE_INFO("Link speed = %" PRIu32 " bps\r\n", iflinkspeed);
+                printf("Link speed = %" PRIu32 " bps\r\n", iflinkspeed);
                 //Debug message
-                TRACE_INFO("Invalid Duplex mode\r\n");
+                printf("Invalid Duplex mode\r\n");
                 break;
             }
 
@@ -333,7 +332,7 @@ static void lan8742EventHandler(void)
             //Update link state
             iflinkState = FALSE;
             //Display link state
-            TRACE_INFO("Link is down ...\r\n");
+            printf("Link is down ...\r\n");
         }
     }
 }
@@ -346,7 +345,7 @@ static void lan8742EventHandler(void)
 void ENET_Configuration(void)
 {
     //Debug message
-    TRACE_INFO("Initializing STM32H7xx Ethernet MAC...\r\n");
+    printf("Initializing STM32H7xx Ethernet MAC...\r\n");
 
     //GPIO configuration
     stm32h7xxEthInitGpio();
@@ -371,7 +370,7 @@ void ENET_Configuration(void)
 
     //PHY transceiver initialization
     //Debug message
-    TRACE_INFO("Initializing LAN8742...\r\n");
+    printf("Initializing LAN8742...\r\n");
 
     //Reset PHY transceiver (soft reset)
     stm32h7xxEthWritePhyReg(LAN8742_PHY_ADDR, LAN8742_PHY_REG_BMCR, BMCR_RESET);
@@ -753,13 +752,13 @@ void EthifTask(void *p_arg)
     if (!osCreateEvent(&TxEvent))
     {
         //Failed to create event object
-        TRACE_INFO("ERROR_OUT_OF_RESOURCES\r\n");
+        printf("ERROR_OUT_OF_RESOURCES\r\n");
     }
     //Create a event object to receive notifications from device drivers
     if (!osCreateEvent(&netEvent))
     {
         //Failed to create mutex
-        TRACE_INFO("ERROR_OUT_OF_RESOURCES\r\n");
+        printf("ERROR_OUT_OF_RESOURCES\r\n");
     }
 
     //Interrupts can be safely enabled

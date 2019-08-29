@@ -1,3 +1,29 @@
+/**
+ * @file compiler_port.h
+ * @brief Compiler specific definitions
+ *
+ * @section License
+ *
+ * Copyright (C) 2010-2019 Oryx Embedded SARL. All rights reserved.
+ *
+ * This file is part of CycloneTCP Eval.
+ *
+ * This software is provided in source form for a short-term evaluation only. The
+ * evaluation license expires 90 days after the date you first download the software.
+ *
+ * If you plan to use this software in a commercial product, you are required to
+ * purchase a commercial license from Oryx Embedded SARL.
+ *
+ * After the 90-day evaluation period, you agree to either purchase a commercial
+ * license or delete all copies of this software. If you wish to extend the
+ * evaluation period, you must contact sales@oryx-embedded.com.
+ *
+ * This evaluation software is provided "as is" without warranty of any kind.
+ * Technical support is available as an option during the evaluation period.
+ *
+ * @author Oryx Embedded SARL (www.oryx-embedded.com)
+ * @version 1.9.4
+ **/
 
 #ifndef _COMPILER_PORT_H
 #define _COMPILER_PORT_H
@@ -24,12 +50,15 @@ typedef uint32_t systime_t;
 
 #if defined(__linux__)
    #define PRIuSIZE "zu"
+   #define PRIXSIZE "zX"
    #define PRIuTIME "lu"
 #elif defined(_WIN32)
    #define PRIuSIZE "Iu"
+   #define PRIXSIZE "IX"
    #define PRIuTIME "lu"
 #elif defined(__XC32)
    #define PRIuSIZE "u"
+   #define PRIXSIZE "X"
    #define PRIuTIME "u"
 #elif defined(__CWCC__)
    #define PRIu8 "u"
@@ -42,9 +71,11 @@ typedef uint32_t systime_t;
    #define PRIX16 "X"
    #define PRIX32 "X"
    #define PRIuSIZE "u"
+   #define PRIXSIZE "X"
    #define PRIuTIME "u"
 #else
    #define PRIuSIZE "u"
+   #define PRIXSIZE "X"
    #define PRIuTIME "lu"
 #endif
 
