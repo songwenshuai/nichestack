@@ -1522,6 +1522,12 @@
         </group>
         <group>
             <name>H</name>
+            <group>
+                <name>target</name>
+                <file>
+                    <name>$PROJ_DIR$\..\..\Niche\h\target\ipport.h</name>
+                </file>
+            </group>
             <file>
                 <name>$PROJ_DIR$\..\..\Niche\h\app_ping.h</name>
             </file>
@@ -1665,6 +1671,9 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\Niche\h\tcpport.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\Niche\h\tk_crnos.h</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\Niche\h\udp.h</name>
@@ -1877,6 +1886,9 @@
                 <name>$PROJ_DIR$\..\..\Niche\misclib\testmenu.c</name>
             </file>
             <file>
+                <name>$PROJ_DIR$\..\..\Niche\misclib\tk_crnos.c</name>
+            </file>
+            <file>
                 <name>$PROJ_DIR$\..\..\Niche\misclib\ttyio.c</name>
             </file>
             <file>
@@ -1937,13 +1949,10 @@
         <group>
             <name>Target</name>
             <file>
-                <name>$PROJ_DIR$\..\..\Niche\target\acksum.s</name>
+                <name>$PROJ_DIR$\..\..\Niche\target\asm_cksum.S</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\..\Niche\target\in_stubs.c</name>
-            </file>
-            <file>
-                <name>$PROJ_DIR$\..\..\Niche\target\ipport.h</name>
+                <name>$PROJ_DIR$\..\..\Niche\target\brdutils.c</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\Niche\target\osport.h</name>
@@ -1953,12 +1962,6 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\Niche\target\targnios.c</name>
-            </file>
-            <file>
-                <name>$PROJ_DIR$\..\..\Niche\target\tk_crnos.c</name>
-            </file>
-            <file>
-                <name>$PROJ_DIR$\..\..\Niche\target\tk_crnos.h</name>
             </file>
         </group>
         <group>

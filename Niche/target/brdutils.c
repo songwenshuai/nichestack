@@ -1,5 +1,5 @@
 /*
- * FILENAME: in_stubs.c
+ * FILENAME: brdutils.c
  *
  * Copyright 2004 InterNiche Technologies Inc. All rights reserved.
  *
