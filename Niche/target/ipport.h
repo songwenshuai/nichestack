@@ -815,6 +815,69 @@ unsigned short cksum(void *, unsigned);
 #include "libport.h"
 #endif
 
+/* Compiler Related Definitions */
+#ifdef __CC_ARM                         /* ARM Compiler */
+  #include <stdarg.h>
+  #define SECTION(x)               __attribute__((section(x)))
+  #define UNUSED                   __attribute__((unused))
+  #define USED                     __attribute__((used))
+  #define ALIGN(n)                 __attribute__((aligned(n)))
+  #define WEAK                     __weak
+  #define inline                   static __inline
+
+#elif defined (__IAR_SYSTEMS_ICC__)     /* for IAR Compiler */
+  #include <stdarg.h>
+  #define SECTION(x)               @ x
+#ifndef UNUSED
+  #define UNUSED
+#endif
+  #define USED                     __root
+  #define PRAGMA(x)                _Pragma(#x)
+  #define ALIGN(n)                 PRAGMA(data_alignment=n)
+  #define WEAK                     __weak
+  #define inline                   static inline
+
+#elif defined (__GNUC__)                /* GNU GCC Compiler */
+  
+  #define SECTION(x)               __attribute__((section(x)))
+  #define UNUSED                   __attribute__((unused))
+  #define USED                     __attribute__((used))
+  #define ALIGN(n)                 __attribute__((aligned(n)))
+  #define WEAK                     __attribute__((weak))
+  #define inline                   static __inline
+
+#elif defined (__ADSPBLACKFIN__)        /* for VisualDSP++ Compiler */
+  #include <stdarg.h>
+  #define SECTION(x)               __attribute__((section(x)))
+  #define UNUSED                   __attribute__((unused))
+  #define USED                     __attribute__((used))
+  #define ALIGN(n)                 __attribute__((aligned(n)))
+  #define WEAK                     __attribute__((weak))
+  #define inline                   static inline
+#elif defined (_MSC_VER)
+  #include <stdarg.h>
+  #define SECTION(x)
+  #define UNUSED
+  #define USED
+  #define ALIGN(n)                 __declspec(align(n))
+  #define WEAK
+  #define inline                   static __inline
+#elif defined (__TI_COMPILER_VERSION__)
+  #include <stdarg.h>
+  /* The way that TI compiler set section is different from other(at least
+   * GCC and MDK) compilers. See ARM Optimizing C/C++ Compiler 5.9.3 for more
+   * details. */
+  #define SECTION(x)
+  #define UNUSED
+  #define USED
+  #define PRAGMA(x)                _Pragma(#x)
+  #define ALIGN(n)
+  #define WEAK
+  #define inline                   static inline
+#else
+  #error not supported tool chain
+#endif
+
 /********************* ipport.h_h common ****************************/
 
 /*
