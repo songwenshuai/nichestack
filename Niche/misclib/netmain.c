@@ -67,6 +67,9 @@ void ping_process_rcvd_msgs (void);
 void  peg_check(void);     /* check for PEG events & post them */
 #endif
 
+#ifdef USE_LCD
+void update_display(void);
+#endif
 
 /* include project header. Define this in ipport.h to point to a file
  * in your project directory, i.e. "..\mpc860\osport.h"
@@ -145,6 +148,7 @@ TK_ENTRY(BtnTask);
 
 TK_OBJECT(to_EthifTask);
 TK_ENTRY(EthifTask);
+
 /* 
  * Altera Niche Stack Nios port modification:
  * Defines for the priorities and stack sizes are setup 
@@ -322,6 +326,9 @@ TK_ENTRY(tk_netmain)
       /* do not kill packet demux on net_system_exit. It may be
        * vital to a clean shutdown 
        */
+#ifdef USE_LCD
+      update_display();
+#endif
    }
 }
 #endif   /* NO_INET_STACK */

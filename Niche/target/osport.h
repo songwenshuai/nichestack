@@ -21,6 +21,10 @@
 
 #include "ipport.h"
 
+#ifdef UCOS_II_
+#include "includes.h"
+#endif /* UCOS_II */
+
 #include "q.h"
 #include "netbuf.h"
 #include "net.h"
@@ -32,6 +36,65 @@
 #include "nvfsio.h"
 #include "menu.h"
 #include "app_ping.h"
+
+#if 0
+#include "task.h"
+#endif
+
+// These definitions came in the standard port of the InterNiche sources
+// They are not used in the Nios II port
+#if 0
+
+#define  DEMO_STACK_SIZE      4096
+
+#define  NETHEAP_SIZE         0x30000
+
+/* task stack sizes */
+#define  NET_STACK_SIZE       4096
+#define  APP_STACK_SIZE       6144 /* 4096 */     /* default for applications */
+#define  CLOCK_STACK_SIZE     4096
+
+#define  IO_STACK_SIZE        2048
+#define  WEB_STACK_SIZE       APP_STACK_SIZE
+#define  FTP_STACK_SIZE       APP_STACK_SIZE
+#define  PING_STACK_SIZE      4096
+#define  TN_STACK_SIZE        APP_STACK_SIZE
+#define  TCP_ECHO_STACK_SIZE  APP_STACK_SIZE
+
+#endif
+
+// Note: These definitions below have moved into the ipport.h file
+#if 0
+
+#define  DEMO_STACK_SIZE      (4096+8192)
+
+#define  NETHEAP_SIZE         0x30000
+
+/* task stack sizes */
+#define  NET_STACK_SIZE       (4096+8192)
+#define  APP_STACK_SIZE       (6144+8192) /* 4096 */     /* default for applications */
+#define  CLOCK_STACK_SIZE     (4096+8192)
+
+#define  IO_STACK_SIZE        (2048+8192)
+#define  WEB_STACK_SIZE       (APP_STACK_SIZE+8192)
+#define  FTP_STACK_SIZE       APP_STACK_SIZE
+#define  PING_STACK_SIZE      (4096+8192)
+#define  TN_STACK_SIZE        APP_STACK_SIZE
+#define  TCP_ECHO_STACK_SIZE  APP_STACK_SIZE
+
+#endif
+
+#ifdef INICHE_TASKS
+#define TK_ENTRY(name)       int name(int parm)
+#define TK_ENTRY_PTR(name)   int(*name)(int)
+#define TK_OBJECT(name)      task * name
+#define TK_OBJECT_PTR(name)  task ** name
+#define TK_RETURN_ERROR()    return (-1)
+#define TK_RETURN_OK()       parm++; return (0)
+#define NET_PRIORITY         0     /* not used on tasks */
+#define MAIN_TASK_IS_NET     1     /* compiler main() is converted to net task */
+#define TK_NETMAINPARM       0     /* parameter to main/net task */
+#endif
 
 /* table with an entry for each internet task/thread. This is filled
 in the netmain.c, so it should have the same values in the same order 
@@ -46,6 +109,10 @@ struct inet_taskinfo {
    char* stackbase;        /* base of task's stack */
 };
 
+#ifdef ALT_INICHE
+extern void alt_iniche_init(void);
+#endif /* ALT_INICHE */
+
 int TK_NEWTASK(struct inet_taskinfo * nettask);
 
 extern char * pre_task_setup(void);
@@ -59,9 +126,11 @@ extern struct inet_taskinfo nettasks[];
 
 extern void dtrap(void);
 
-/* RTOS pend/post */
-#define  GLOBWAKE_SZ             20
-
+/* UCOS_II pend/post */
+#undef TK_CRON_DIAGS
+#define  GLOBWAKE_SZ     20
+#define  GLOBWAKE_PURGE_DELT     (TPS * 2)
+ 
 struct wake_event
 {
    void *wake_sem;
@@ -76,6 +145,8 @@ struct TCP_PendPost
    OsSemaphore semaphore;      /* semaphore to wait on */
 };
  
+
+
 #ifdef MINI_IP
 #define net_system_exit (FALSE)
 #else

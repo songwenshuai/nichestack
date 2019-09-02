@@ -11,21 +11,26 @@
 #endif
 
 #ifndef C_CHECKSUM
-unsigned short acksum (void *, unsigned);
+unsigned short asm_cksum (void *, unsigned);
 #endif
-
+#ifdef ALT_CKSUM
+unsigned short alt_cksum (void *, unsigned);
+#endif
   
 /* Figure out how many checksum choices we have. There is always
  * a C version. If 'C_CHECKSUM' is not defined, then we have an
  * assembly version, and there is a third choice specifically for
  * Altera NIOS-II systems.
  */
-#ifdef C_CHECKSUM
+#ifdef ALT_CKSUM
+#define MAX_CKSUM_SELECT  3
+#else
+#ifndef C_CHECKSUM
 #define MAX_CKSUM_SELECT  2
 #else
 #define MAX_CKSUM_SELECT  1
 #endif
-
+#endif
 
 /* checksum algorithm selection 
  * 1 = C code
@@ -97,7 +102,16 @@ cksum (void *ptr, unsigned count)
          return (ccksum(ptr, count));
  #ifndef C_CHECKSUM
       case 2:
-         return (acksum(ptr, count));
+         return (asm_cksum(ptr, count));
+#endif
+#ifdef ALT_CKSUM
+      case 3:
+#ifdef ALTERA_NIOS2
+         alt_dcache_flush_all();
+         return (alt_cksum((void *)((unsigned long)ptr & 0x7FFFFFFF), count));
+#else
+#endif
+         return (alt_cksum(ptr, count));
 #endif
    }
 }

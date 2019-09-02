@@ -1,11 +1,11 @@
 ;/*
-; * FILENAME: acksum.s
+; * FILENAME: asm_cksum.s
 ; *
 ; * Copyright 2002-2006 by InterNiche Technologies Inc. All rights reserved.
 ; *
 ; * MODULE: ARM targets (4T and other Thumb-capable architectures)
 ; *
-; * ROUTINES: acksum(ptr, word_count)
+; * ROUTINES: asm_cksum(ptr, word_count)
 ; *
 ; * DESCRIPTION: Make IP checksum from parms passed in r0 & r1, return
 ; *              sum in r0
@@ -19,7 +19,7 @@
 
       RSEG    CODE:CODE(3)
       CODE16
-      PUBLIC   acksum
+      PUBLIC   asm_cksum
 
 ; register usage:
 ; r0 - checksum accumulator
@@ -29,7 +29,7 @@
 ; r4-r7 - data buffer
 ; lr - return address
 
-acksum
+asm_cksum
       push     {r2-r7}           ; /* save local registers */
 
       mov      r2, r0            ; /* r2 = data pointer */

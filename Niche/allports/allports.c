@@ -293,7 +293,7 @@ netmain_init(void)
    printf("##                             Song Wenshuai                             ##\n");
    printf("###########################################################################\n");
    printf("Copyright 1996-2008 by InterNiche Technologies. All rights reserved. \n");
-   printf("%s\n", name);
+   printf("%s", name);
 
 #ifdef IN_MENUS
    install_version("allports3.1");
