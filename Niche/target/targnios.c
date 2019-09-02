@@ -104,6 +104,86 @@ extern int   ppp_type_setup(LINEP);
 #ifdef USE_SLIP
 extern int prep_slip(int ifaces_found);
 #endif
+OsSemaphore mheap_sem_ptr;
+OsSemaphore rcvdq_sem_ptr;
+#ifdef OS_PREEMPTIVE
+OsSemaphore resid_semaphore[MAX_RESID + 1];
+OsSemaphore app_semaphore[MAX_SEMID + 1];
+#endif
+
+#ifndef TCPWAKE_RTOS
+/*
+ * Q and Mutex used by tcp_sleep/wakeup
+ */
+extern struct TCP_PendPost global_TCPwakeup_set[GLOBWAKE_SZ];
+extern int global_TCPwakeup_setIndx;
+#endif
+
+/* NicheStack network structure. */
+extern struct net netstatic[STATIC_NETS];
+
+/*
+ * Create Sem
+ */
+void sem_create(void)
+{
+   int i;
+   INT8U SEM_NAME[20] = {0};
+   
+   /* initialize the npalloc() heap semaphore */
+   if(!osCreateSemaphore(&mheap_sem_ptr, 1))
+   {
+      TRACE_ERROR("mheap_sem_ptr create err\r\n");      /* SYS_DEBUG MESSAGE */
+   }
+   OSEventNameSet(mheap_sem_ptr.p,  (INT8U *)"mheap sem",   NULL);
+
+   if(!osCreateSemaphore(&rcvdq_sem_ptr, 0))
+   {
+      TRACE_ERROR("rcvdq_sem_ptr create err\r\n");      /* SYS_DEBUG MESSAGE */
+   }
+   OSEventNameSet(rcvdq_sem_ptr.p,  (INT8U *)"rcvdq sem",   NULL);
+
+#ifdef OS_PREEMPTIVE
+
+   for (i = 0; i <= MAX_RESID; i++)
+   {
+      if(!osCreateSemaphore(&resid_semaphore[i], 1))
+      {
+         TRACE_ERROR("resid_semaphore create err\r\n");  /* SYS_DEBUG MESSAGE */
+      }
+      sprintf((char *)SEM_NAME, "resid sem[%d]", i);
+      OSEventNameSet(resid_semaphore[i].p, SEM_NAME, NULL);
+   }
+   
+   for (i = 0; i <= MAX_SEMID; i++)
+   {
+      if(!osCreateSemaphore(&app_semaphore[i], 1))
+      {
+         TRACE_ERROR("app_semaphore create err\r\n"); /* SYS_DEBUG MESSAGE */
+      }
+      sprintf((char *)SEM_NAME, "app sem[%d]", i);
+      OSEventNameSet(app_semaphore[i].p, SEM_NAME, NULL);
+   }
+#endif /* OS_PREEMPTIVE */
+
+#ifndef TCPWAKE_RTOS
+  /* 
+    * clear global_TCPwakeup_set
+    */
+  for (i = 0; i < GLOBWAKE_SZ; i++)
+  {
+    global_TCPwakeup_set[i].ctick = 0;
+    global_TCPwakeup_set[i].soc_event = NULL;
+    if(!osCreateSemaphore(&global_TCPwakeup_set[i].semaphore, 0))
+      {
+         TRACE_ERROR("globwake_semaphore create err\r\n");  /* SYS_DEBUG MESSAGE */
+      }
+      sprintf((char *)SEM_NAME, "tcp wake sem[%d]", i);
+      OSEventNameSet(global_TCPwakeup_set[i].semaphore.p, SEM_NAME, NULL);
+   }
+  global_TCPwakeup_setIndx = 0;
+#endif /* TCPWAKE_RTOS */
+}
 
 /* hardware setup called from main before anything else (e.g.
  * before tasks, printf, memory alloc, etc. 
@@ -441,6 +521,66 @@ prep_armintcp(int ifaces_found)
 }
 
 
+char *npalloc(unsigned size)
+{
+  char *ptr;
+  char *(*alloc_rtn)(size_t size) = calloc1;
+
+#ifdef RTOS
+   int status;
+#endif
+
+#ifdef RTOS
+   status = osWaitForSemaphore(&mheap_sem_ptr, INFINITE_DELAY);
+   if (!status)
+   {
+      TRACE_ERROR("alloc mheap sem pend err\r\n");  /* SYS_DEBUG MESSAGE */
+   }
+#endif
+
+#ifdef MEM_WRAPPERS
+  ptr = wrap_alloc(size, alloc_rtn);
+#else
+  ptr = (*alloc_rtn)(size);
+#endif
+
+#ifdef RTOS 
+   osReleaseSemaphore(&mheap_sem_ptr);
+#endif
+
+  if (!ptr)
+    return NULL;
+
+  MEMSET(ptr, 0, size);
+  return ptr;
+}
+
+void npfree(void *ptr)
+{
+  void (*free_rtn)(char *ptr) = mem_free;
+
+#ifdef RTOS
+   int status;
+#endif
+
+#ifdef RTOS
+   status = osWaitForSemaphore(&mheap_sem_ptr, INFINITE_DELAY);
+   if (!status)
+   {
+      TRACE_ERROR("free mheap sem pend err\r\n");  /* SYS_DEBUG MESSAGE */
+   }
+#endif
+
+#ifdef MEM_WRAPPERS
+  wrap_free((char *)ptr, free_rtn);
+#else
+  (*free_rtn)((char *)ptr);
+#endif
+
+#ifdef RTOS
+   osReleaseSemaphore(&mheap_sem_ptr);
+#endif
+}
 #ifdef   USE_PPP
 
 /* FUNCTION: ppp_type_setup(M_PPP)
