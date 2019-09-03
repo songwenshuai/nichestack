@@ -23,20 +23,10 @@
  * 
  */
 
-/* Nichestack definitions */
-#include <stm32h7xx_hal.h>
-
-/* Includes ------------------------------------------------------------------*/
-#include "cpu.h"
-
 #include "ipport.h"
 #include "libport.h"
-#include "tcpport.h"
-#include "net.h"
 #include "in_utils.h"
 #include "memwrap.h"
-#include "ifec.h"
-
 #ifdef VFS_FILES
 #include "vfsfiles.h"
 #endif
@@ -47,6 +37,11 @@
  */
 #ifndef SUPERLOOP
 #include "osport.h"
+#endif
+
+#ifdef UCOS_II_
+/* If uCOS-II, bring in the needed include files */
+#include "includes.h"
 #endif
 
 #ifdef USE_PPP
@@ -74,6 +69,16 @@ extern int ppp_static;     /* number static PPP ifaces to set */
 #include "smtpport.h"
 #endif
 
+/*
+ * Altera Niche Stack Nios port modification:
+ * Include headers for cache-bypass macros and 
+ * to the device abstraction layer code that handles
+ * generic MAC initialization 
+ */
+#ifdef ALT_INICHE_
+#include "alt_iniche_dev.h"
+#include "sys/alt_cache.h"
+#endif
 
 /*
  * Altera Niche Stack Nios port modification:
@@ -82,6 +87,8 @@ extern int ppp_static;     /* number static PPP ifaces to set */
  */
 
 #include <ether.h>
+
+extern int (*port_prep)(int);
 
 extern struct net netstatic[MAXNETS];   
 
@@ -104,6 +111,10 @@ extern int   ppp_type_setup(LINEP);
 #ifdef USE_SLIP
 extern int prep_slip(int ifaces_found);
 #endif
+#ifdef USE_SMSC91X
+extern int prep_s91(int ifaces_found);
+#endif
+
 OsSemaphore mheap_sem_ptr;
 OsSemaphore rcvdq_sem_ptr;
 #ifdef OS_PREEMPTIVE
@@ -119,52 +130,53 @@ extern struct TCP_PendPost global_TCPwakeup_set[GLOBWAKE_SZ];
 extern int global_TCPwakeup_setIndx;
 #endif
 
-/* NicheStack network structure. */
-extern struct net netstatic[STATIC_NETS];
-
 /*
- * Create Sem
+ * Altera Niche Stack Nios port modification:
+ * Provide init routine to call after multi-tasking
+ * has started to create uc/OS resources.
+ *
+ * Do not build this portion with SUPERLOOP
  */
-void sem_create(void)
+#ifdef ALT_INICHE
+#ifndef SUPERLOOP
+
+extern OsSemaphore resid_semaphore[MAX_RESID+1];
+
+void alt_iniche_init(void)
 {
    int i;
    INT8U SEM_NAME[20] = {0};
    
    /* initialize the npalloc() heap semaphore */
+
    if(!osCreateSemaphore(&mheap_sem_ptr, 1))
-   {
-      TRACE_ERROR("mheap_sem_ptr create err\r\n");      /* SYS_DEBUG MESSAGE */
-   }
+      panic("mheap_sem_ptr create err");
+
    OSEventNameSet(mheap_sem_ptr.p,  (INT8U *)"mheap sem",   NULL);
 
    if(!osCreateSemaphore(&rcvdq_sem_ptr, 0))
-   {
-      TRACE_ERROR("rcvdq_sem_ptr create err\r\n");      /* SYS_DEBUG MESSAGE */
-   }
+      panic("rcvdq_sem_ptr create err");
+
    OSEventNameSet(rcvdq_sem_ptr.p,  (INT8U *)"rcvdq sem",   NULL);
 
 #ifdef OS_PREEMPTIVE
-
    for (i = 0; i <= MAX_RESID; i++)
    {
+
       if(!osCreateSemaphore(&resid_semaphore[i], 1))
-      {
-         TRACE_ERROR("resid_semaphore create err\r\n");  /* SYS_DEBUG MESSAGE */
-      }
+         panic("resid_semaphore create err");
       sprintf((char *)SEM_NAME, "resid sem[%d]", i);
       OSEventNameSet(resid_semaphore[i].p, SEM_NAME, NULL);
    }
-   
    for (i = 0; i <= MAX_SEMID; i++)
    {
+
       if(!osCreateSemaphore(&app_semaphore[i], 1))
-      {
-         TRACE_ERROR("app_semaphore create err\r\n"); /* SYS_DEBUG MESSAGE */
-      }
+         panic("app_semaphore create err");
       sprintf((char *)SEM_NAME, "app sem[%d]", i);
       OSEventNameSet(app_semaphore[i].p, SEM_NAME, NULL);
    }
-#endif /* OS_PREEMPTIVE */
+#endif  /* OS_PREEMPTIVE */
 
 #ifndef TCPWAKE_RTOS
   /* 
@@ -174,16 +186,18 @@ void sem_create(void)
   {
     global_TCPwakeup_set[i].ctick = 0;
     global_TCPwakeup_set[i].soc_event = NULL;
+
     if(!osCreateSemaphore(&global_TCPwakeup_set[i].semaphore, 0))
-      {
-         TRACE_ERROR("globwake_semaphore create err\r\n");  /* SYS_DEBUG MESSAGE */
-      }
+         panic("globwake_semaphore create err");
       sprintf((char *)SEM_NAME, "tcp wake sem[%d]", i);
       OSEventNameSet(global_TCPwakeup_set[i].semaphore.p, SEM_NAME, NULL);
    }
   global_TCPwakeup_setIndx = 0;
-#endif /* TCPWAKE_RTOS */
+#endif  /* TCPWAKE_RTOS */
 }
+#endif /* !SUPERLOOP */
+#endif /* ALT_INICHE */
+
 
 /* hardware setup called from main before anything else (e.g.
  * before tasks, printf, memory alloc, etc. 
@@ -194,9 +208,14 @@ void sem_create(void)
 char *
 pre_task_setup()
 {
+#ifdef USE_LCD
+   write_leds(0);
+   write_7seg_raw(0x0000);
+#endif
+
    /* preset buffer counts; may be overridden from command line */
-   bigbufs = NUMBIGBUFS;
-   lilbufs = NUMLILBUFS;
+   bigbufs = MAXBIGPKTS;
+   lilbufs = MAXLILPKTS;
    bigbufsiz = BIGBUFSIZE;
    lilbufsiz = LILBUFSIZE;
 
@@ -270,6 +289,8 @@ pre_task_setup()
    set_nv_defaults = nv_defaults;   /* set nv parameter init routine */
 
 #endif /* INCLUDE_NVPARMS */
+
+
 #ifdef   USE_PPP
 #ifdef   MINI_IP
    /* If we are using the mini IP layer and PPP, then  overwrite the 
@@ -500,14 +521,17 @@ prep_armintcp(int ifaces_found)
 {
 /*
  * Altera Niche Stack Nios port modification:
- * Call eth_dev_init, in alt_iniche_dev.c, 
+ * Call iniche_devices_init, in alt_iniche_dev.c, 
  * to step through all devices and all their respective
  * low-level initialization routines.
  */
 #ifdef ALT_INICHE
-   ifaces_found = eth_dev_init(ifaces_found);
+   ifaces_found = iniche_devices_init(ifaces_found);
 #endif
 
+#ifdef USE_SMSC91X
+   ifaces_found = prep_s91(ifaces_found);
+#endif
 
 #ifdef USE_PPP
    ifaces_found = prep_ppp(ifaces_found);
@@ -521,66 +545,150 @@ prep_armintcp(int ifaces_found)
 }
 
 
-char *npalloc(unsigned size)
-{
-  char *ptr;
-  char *(*alloc_rtn)(size_t size) = calloc1;
+#ifdef UCOS_II
+OsSemaphore mheap_sem_ptr;
+OsSemaphore rcvdq_sem_ptr;
+#endif
 
-#ifdef RTOS
+
+char *
+npalloc_base(unsigned size, int cacheable)
+{
+char * ptr;
+char *(*alloc_rtn)(size_t size) = cacheable ? calloc1 : calloc1;
+
+#ifdef UCOS_II
    int status;
 #endif
 
-#ifdef RTOS
+#ifdef UCOS_II
    status = osWaitForSemaphore(&mheap_sem_ptr, INFINITE_DELAY);
    if (!status)
    {
-      TRACE_ERROR("alloc mheap sem pend err\r\n");  /* SYS_DEBUG MESSAGE */
+      int errct = 0;
+
+      /* sometimes we get a "timeout" error even though we passed a zero
+       * to indicate we'll wait forever. When this happens, try again:
+       */
+      while(!status)
+      {
+         if(errct++ > 1000)
+         {
+            panic("npalloc");    /* fatal? */
+            return NULL;
+         }
+         status = osWaitForSemaphore(&mheap_sem_ptr, INFINITE_DELAY);
+      }
    }
 #endif
 
-#ifdef MEM_WRAPPERS
-  ptr = wrap_alloc(size, alloc_rtn);
+#ifdef   MEM_WRAPPERS
+   ptr = wrap_alloc(size, alloc_rtn);
 #else
-  ptr = (*alloc_rtn)(size);
+   ptr = (*alloc_rtn)(size);
 #endif
 
-#ifdef RTOS 
-   osReleaseSemaphore(&mheap_sem_ptr);
+#ifdef UCOS_II 
+   status = osReleaseSemaphore(&mheap_sem_ptr);
 #endif
+   
+   if(!ptr)
+      return NULL;
 
-  if (!ptr)
-    return NULL;
-
-  MEMSET(ptr, 0, size);
-  return ptr;
+   MEMSET(ptr, 0, size);
+   return ptr;      
 }
 
-void npfree(void *ptr)
+void
+npfree_base(void *ptr, int cacheable)
 {
-  void (*free_rtn)(char *ptr) = mem_free;
-
-#ifdef RTOS
+   void (*free_rtn)(char *ptr) = cacheable ? mem_free : mem_free;
+#ifdef UCOS_II
    int status;
-#endif
 
-#ifdef RTOS
    status = osWaitForSemaphore(&mheap_sem_ptr, INFINITE_DELAY);
    if (!status)
    {
-      TRACE_ERROR("free mheap sem pend err\r\n");  /* SYS_DEBUG MESSAGE */
+      int errct = 0;
+
+      /* sometimes we get a "timeout" error even though we passed a zero
+       * to indicate we'll wait forever. When this happens, try again:
+       */
+      while (!status)
+      {
+         if (errct++ > 1000)
+         {
+            panic("npfree");    /* fatal? */
+            return;
+         }
+         status = osWaitForSemaphore(&mheap_sem_ptr, INFINITE_DELAY);
+      }
    }
-#endif
-
-#ifdef MEM_WRAPPERS
-  wrap_free((char *)ptr, free_rtn);
+   
+#ifdef   MEM_WRAPPERS
+   wrap_free((char*)ptr, free_rtn);
 #else
-  (*free_rtn)((char *)ptr);
+   (*free_rtn)(ptr);
 #endif
 
-#ifdef RTOS
-   osReleaseSemaphore(&mheap_sem_ptr);
+   status = osReleaseSemaphore(&mheap_sem_ptr);
+#else
+#ifdef   MEM_WRAPPERS
+   wrap_free((char*)ptr, free_rtn);
+#else
+   (*free_rtn)(ptr);
 #endif
+#endif
+
 }
+
+char *
+npalloc(unsigned size)
+{
+   return npalloc_base(size, 1);
+}
+
+void
+npfree(void *ptr)
+{
+   if(ptr) {
+      npfree_base(ptr, 1);
+   }
+}
+
+
+/*
+ * Altera Niche Stack Nios port modification:
+ *
+ * ncpalloc()/ncpfree(): Uncached memory allocation/free
+ * uncached version of the built-in npalloc()/npfree().
+ *
+ * These routines should be used in Nios II systems on
+ * any data structure or buffer that may be touched outside
+ * the CPU (i.e. DMA) for cache coherency purposes.
+ *
+ * If no DMA is present in the system the conentional npalloc()
+ * and npfree() may be used directly.
+ *
+ * The main Nios II Interniche port configuration file, ipport.h,
+ * contains macro definitions that assign specific memory
+ * allocation calls to these routines.
+ */
+#ifdef ALT_INICHE
+char * ncpalloc(unsigned size)
+{
+   return npalloc_base(size, 0);
+}
+
+void ncpfree(void *ptr)
+{
+   if(ptr) {
+      npfree_base(ptr, 0);
+   }
+}
+
+#endif /* ALT_INICHE defined */
+
 #ifdef   USE_PPP
 
 /* FUNCTION: ppp_type_setup(M_PPP)

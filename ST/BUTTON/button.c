@@ -67,7 +67,7 @@ void Button_Create(const char *name,
   btn->Button_Last_Level = btn->Read_Button_Level(); //按键当前电平
   btn->Debounce_Time = 0;
   
-  TRACE_DEBUG("button create success!");
+  TRACE_DEBUG("button create success!\n");
   
   Add_Button(btn);          //创建的时候添加到单链表中
   
@@ -483,8 +483,7 @@ static void Print_Btn_Info(Button_t* btn)
               btn->Button_State:%d \n\
               btn->Button_Trigger_Event:%d \n\
               btn->Button_Trigger_Level:%d \n\
-              btn->Button_Last_Level:%d \n\
-              ",
+              btn->Button_Last_Level:%d \n",
               btn->Name,
               btn->Button_State,
               btn->Button_Trigger_Event,

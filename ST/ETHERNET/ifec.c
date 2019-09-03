@@ -379,7 +379,7 @@ int input_ippkt(uint8_t *addr, int RxLen)
 //-----------------------------------------------------------------------------------------------------------
 
 /*
- * eth_dev_init
+ * iniche_devices_init
  *
  *   --> if_count               Number of interfaces before init.
  *
@@ -389,7 +389,7 @@ int input_ippkt(uint8_t *addr, int RxLen)
  * before initialization is specified by if_count.  This function returns the
  * total number of interfaces after initialization.
  */
-int eth_dev_init(int if_count)
+int iniche_devices_init(int if_count)
 {
   int use_dhcp;
   NET p_net;

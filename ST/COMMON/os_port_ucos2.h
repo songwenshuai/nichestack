@@ -148,7 +148,7 @@ bool_t osSetEventFromIsr(OsEvent *event);
 bool_t osCreateSemaphore(OsSemaphore *semaphore, uint_t count);
 void osDeleteSemaphore(OsSemaphore *semaphore);
 bool_t osWaitForSemaphore(OsSemaphore *semaphore, systime_t timeout);
-void osReleaseSemaphore(OsSemaphore *semaphore);
+bool_t osReleaseSemaphore(OsSemaphore *semaphore);
 
 //Mutex management
 bool_t osCreateMutex(OsMutex *mutex);

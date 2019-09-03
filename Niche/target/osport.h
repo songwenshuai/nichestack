@@ -37,9 +37,7 @@
 #include "menu.h"
 #include "app_ping.h"
 
-#if 0
 #include "task.h"
-#endif
 
 // These definitions came in the standard port of the InterNiche sources
 // They are not used in the Nios II port

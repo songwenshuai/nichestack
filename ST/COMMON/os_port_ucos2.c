@@ -488,10 +488,18 @@ bool_t osWaitForSemaphore(OsSemaphore *semaphore, systime_t timeout)
  * @param[in] semaphore Pointer to the semaphore object
  **/
 
-void osReleaseSemaphore(OsSemaphore *semaphore)
+bool_t osReleaseSemaphore(OsSemaphore *semaphore)
 {
+   INT8U err;
+
    //Release the semaphore
-   OSSemPost(semaphore->p);
+   err = OSSemPost(semaphore->p);
+   
+   //Check whether the specified semaphore is available
+   if(err == OS_ERR_NONE)
+      return TRUE;
+   else
+      return FALSE;
 }
 
 

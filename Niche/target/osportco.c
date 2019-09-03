@@ -23,26 +23,36 @@
 
 /*
  * Altera Niche Stack Nios port modification:
- * Rearranged ipport.h and includes.h, using RTOS to not compile the file
+ * Rearranged ipport.h and includes.h, using UCOS_II to not compile the file
  */
 #include "ipport.h"        /* from Interniche directory */
+#ifdef UCOS_II             /* Whole file is #ifdef'ed away if no uCOS-II */
+#if 0
+#include "includes.h"      /* from Nios2 uCOS-II directory */
+#endif
+#include "os_cpu.h"
 
-#ifdef RTOS             /* Whole file is #ifdef'ed away if no uCOS-II */
 #include "osport.h"
 
 #include "in_utils.h"
 #include "memwrap.h"
 
-#if (OS_TRACE_EN > 0u)
-/* SEEGER */
-#include  <os_trace.h>
-#endif
-
-
+extern OsSemaphore mheap_sem_ptr;
+extern OsSemaphore rcvdq_sem_ptr;
 #ifdef OS_PREEMPTIVE
 extern OsSemaphore resid_semaphore[MAX_RESID+1];
 extern OsSemaphore app_semaphore[MAX_SEMID+1];
 #endif
+#if OS_TASK_CREATE_EXT_EN > 0
+struct wake_event global_tcb_ext[OS_LOWEST_PRIO+1];
+#endif
+
+/* state of ints, saved by XXlock_net_res() */
+int   netq_intmask;
+
+extern int netmain(void);
+
+int old_mode;
 
 unsigned long cticks;
 
@@ -57,23 +67,123 @@ u_long tcp_wakeup_count = 0;
 #endif
 
 
+/*
+ * Altera Niche Stack Nios port modification:
+ * This seems to be a sample main() program. We provide these
+ * in our (web server, simple socket serve) software examples,
+ * and generally allow you to write your own main. Disabling
+ */
+#ifndef ALT_INICHE
+
+INT8U app_priority = 13;    /* first/next priority to try for application */
+
+
+
+/* Define C code main entry point.  */
+
+int
+main(void)
+{
+   INT8U mute_err;
+   int priort;
+   int i;
+
+   iniche_net_ready = 0;
+   
+/* OSInit(); */
+   OSTimeSet(0);
+
+   /* create all of the various semaphores */
+   mheap_sem_ptr = OSSemCreate(1);      /* npalloc() heap */
+   if (!mheap_sem_ptr)
+      panic("mheap_sem_ptr create err");
+
+   rcvdq_sem_ptr = OSSemCreate(0);      /* RCVD queue "ready" */
+   if (!rcvdq_sem_ptr)
+      panic("rcvdq_sem_ptr create err"); 
+
+#ifdef OS_PREEMPTIVE
+   for (i = 0; i <= MAX_RESID; i++)
+   {
+      resid_semaphore[i] = OSSemCreate(1);
+      if (!resid_semaphore[i])
+         panic("resid_semaphore create err");  
+   }
+   for (i = 0; i <= MAX_SEMID; i++)
+   {
+      app_semaphore[i] = OSSemCreate(1);
+      if (!app_semaphore[i])
+         panic("app_semaphore create err");  
+   }
+#endif  /* OS_PREEMPTIVE */
+
+#ifndef TCPWAKE_RTOS
+   /* 
+    * clear global_TCPwakeup_set
+    */
+   for (i = 0; i < GLOBWAKE_SZ; i++)
+   {
+      global_TCPwakeup_set[i].ctick = 0;
+      global_TCPwakeup_set[i].soc_event = NULL;
+      global_TCPwakeup_set[i].semaphore = OSSemCreate(0);
+      if (!global_TCPwakeup_set[i].semaphore)
+         panic("globwake_semaphore create err");  
+   }
+   global_TCPwakeup_setIndx = 0;
+
+#endif /* TCPWAKE_RTOS */
+
+   /* We have to lock scheduler while creating net tasks. Even though the RTOS
+    * technically running yet, the ISR hooks to change tasks don't know this.
+    * Since the UART uses interrupts heavly, we have to resort to this to
+    * get console output during net_init.
+    */
+   OSLockNesting++;
+   netmain();        /* Create net tasks */
+   OSLockNesting--;
+
+   dprintf("+++ uCOS init, app_priority = %d\n", app_priority);
+
+   OSStart();        /* Jump to uCOS-II - Start system; never returns */
+   panic("uCOS-II returned");
+
+   return 0;
+}
+
+
+u_char
+uCOS_self(void)
+{
+   /* Return uCOS currently running task ID */
+   return(OSTCBCur->OSTCBPrio);
+}
+#endif /* if not defined: ALT_INICHE */
+
+
+extern void irq_Mask(void);
+extern void irq_Unmask(void);
+
 void
 LOCK_NET_RESOURCE(int resid)
 {
    int status;
+   int   errct = 0;
 
    if ((0 <= resid) && (resid <= MAX_RESID))
    {
+      do
+      {
          status = osWaitForSemaphore(&resid_semaphore[resid], INFINITE_DELAY);
          /* 
-          * Sometimes we get a "timeout" os_err even though we passed a zero
+          * Sometimes we get a "timeout" error even though we passed a zero
           * to indicate we'll wait forever. When this happens, try again:
           */
-         if (!status)
+         if ((!status) && (++errct > 1000))
          {
-            TRACE_ERROR("lock NET sem err\r\n");  /* SYS_DEBUG MESSAGE */
+            panic("lock NET");   /* fatal */
             return;
          }
+      } while (!status);
    }
    else
       dtrap();
@@ -82,13 +192,18 @@ LOCK_NET_RESOURCE(int resid)
 void
 UNLOCK_NET_RESOURCE(int resid)
 {
+   INT8U error = 0;
+
    if ((0 <= resid) && (resid <= MAX_RESID))
    {
-      osReleaseSemaphore(&resid_semaphore[resid]);
+      error = osReleaseSemaphore(&resid_semaphore[resid]);
+      if (!error)
+      {
+         panic("unlock NET");
+      }
    }
    else
       dtrap();
-
 }
 
 
@@ -114,9 +229,24 @@ UNLOCK_NET_RESOURCE(int resid)
  * prioritized RTOS, but that would penalize all the non-preemptive and
  * non-prioritized systems we also support.
  */
-int TK_NEWTASK(struct inet_taskinfo *nettask)
+
+extern TK_ENTRY(tk_netmain);        /* in netmain.c */
+extern long     netmain_wakes;
+
+#ifdef TK_STDIN_DEVICE
+extern TK_ENTRY(tk_keyboard);       /* in netmain.c */
+extern long     keyboard_wakes;
+#endif
+
+extern TK_ENTRY(tk_nettick);        /* in netmain.c */
+extern long     nettick_wakes;
+
+
+int 
+TK_NEWTASK(struct inet_taskinfo * nettask)
 {
    OsTask *task_ptr;
+
 
    task_ptr = osCreateTask( nettask->name,       /* 任务名称                                 */
                             nettask->entry,      /* 函数指针，void *pd为函数的参数           */
@@ -135,6 +265,8 @@ int TK_NEWTASK(struct inet_taskinfo *nettask)
 
   return (0);
 }
+
+
 
 #ifdef OS_PREEMPTIVE
 
@@ -156,20 +288,24 @@ int TK_NEWTASK(struct inet_taskinfo *nettask)
 void
 wait_app_sem(long int semid)
 {
-   int status;
+   int   status;
+   int   errct = 0;
 
    if ((0 <= semid) && (semid <= MAX_SEMID))
    {
+      do
+      {
          status = osWaitForSemaphore(&app_semaphore[semid], INFINITE_DELAY);
          /* 
-          * Sometimes we get a "timeout" os_err even though we passed a zero
+          * Sometimes we get a "timeout" error even though we passed a zero
           * to indicate we'll wait forever. When this happens, try again:
           */
-         if (!status)
+         if ((!status) && (++errct > 1000))
          {
-            TRACE_ERROR("lock APP sem err\r\n");  /* SYS_DEBUG MESSAGE */
+            panic("lock NET");   /* fatal */
             return;
          }
+      } while (!status);
    }
    else
       dtrap();
@@ -194,13 +330,18 @@ wait_app_sem(long int semid)
 void
 post_app_sem(long int semid)
 {
+   INT8U error;
+
    if ((0 <= semid) && (semid <= MAX_SEMID))
    {
-      osReleaseSemaphore(&app_semaphore[semid]);
+      error = osReleaseSemaphore(&app_semaphore[semid]);
+      if (!error)
+      {
+         panic("unlock NET");
+      }
    }
    else
       dtrap();
-
 }
 
 #endif   /* OS_PREEMPTIVE */
@@ -272,7 +413,7 @@ LOCKNET_CHECK(struct queue * q)
     * were not then we are going to panic().
     */
 
-   if(irq_level == 0)    /* Get current interupt state */
+   if(irq_level != 1)    /* Get current interupt state */
    {
       panic("locknet_check2");
    }
@@ -281,4 +422,5 @@ LOCKNET_CHECK(struct queue * q)
 
 #endif /* LOCKNET_CHECKING */
 
-#endif /* RTOS */
+#endif /* UCOS_II */
+

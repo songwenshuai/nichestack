@@ -17,24 +17,45 @@
 #error - must define CHRONOS in ipport.h to use this file
 #endif
 
-extern OsSemaphore rcvdq_sem_ptr;
+extern void TK_OSTaskResume(u_char * Id);
+
+/* define the default priority for all net related tasks */
+#define  NET_PRIORITY   0  /* not used on ChronOS */
+
+#ifdef NOT_DEF
+
+/* 
+ * Altera Niche Stack Nios port modification:
+ * OS_PRIO_SELF defined in ucosii.h, as is OS_EVENT
+ */
+
+/* Self-ID token for pass to ChronOS primitives */
+#ifdef ALT_INICHE
+#include "ucos_ii.h"
+#else
+#define OS_PRIO_SELF 0xFF
+#endif /* ALT_INICHE */
+
+#endif
+
+#define OS_TASK_NAME_SIZE 128
 
 /* Define the CHRONOS object control TK_ macros...  */
 
 /* macros for task type, entry, and name */
-#define  TK_ENTRY(name)       	void  name(void * parm)
-#define  TK_OBJECT(name)      	OsTask   name
-#define  TK_OBJECT_PTR(name)  	OsTask * name
-#define  TK_OBJECT_REF(name)  	OsTask   name
-#define  TK_ENTRY_PTR(name)   	void(*name)(void*)
+#define  TK_ENTRY(name)       void  name(void * parm)
+#define  TK_OBJECT(name)      OsTask   name
+#define  TK_OBJECT_PTR(name)  OsTask * name
+#define  TK_OBJECT_REF(name)  TK_OBJECT(name)
+#define  TK_ENTRY_PTR(name)   void(*name)(void*)
 
-#define  TK_THIS              	TK_OSTaskQuery()
+#define  TK_THIS              TK_OSTaskQuery()
 
 #ifndef  TK_RETURN_ERROR
-#define  TK_RETURN_ERROR()    	return
+#define  TK_RETURN_ERROR()   return
 #endif
 #ifndef  TK_RETURN_OK
-#define  TK_RETURN_OK()       	return
+#define  TK_RETURN_OK()      return
 #endif
 
 
@@ -50,23 +71,52 @@ extern OsSemaphore rcvdq_sem_ptr;
  */
 extern void LOCK_NET_RESOURCE(int res);
 extern void UNLOCK_NET_RESOURCE(int res);
-
 extern void irq_Mask(void);
 extern void irq_Unmask(void);
 
 #define  ENTER_CRIT_SECTION(p)      irq_Mask()
 #define  EXIT_CRIT_SECTION(p)       irq_Unmask()
 
+#ifdef NOTDEF
+/* set up pointers to CHRONOS semaphores as void * so we don't
+ * have to include ChronOS includes in every file in the build. In Addition
+ * RXQ_RESID and FREEQ_RESID are not real semaphores, but just placeholders.
+ * See the LOCK_NET_RESOURCE() code for details.
+ */
+#ifndef NET_RESID
+extern   void *      net_task_sem_ptr;
+#define  NET_RESID   (net_task_sem_ptr)
+#endif
+#ifndef PINGQ_RESID
+extern   void *      pingq_sem_ptr;
+#define  PINGQ_RESID  (pingq_sem_ptr)
+#endif
+#ifndef FTPCQ_RESID
+extern   void *      ftpcq_sem_ptr;
+#define  FTPCQ_RESID  (ftpcq_sem_ptr)
+#endif
+#ifndef RXQ_RESID
+extern   void *      receiveq_sem_ptr;
+#define  RXQ_RESID   (receiveq_sem_ptr)
+#endif
+#ifndef FREEQ_RESID
+extern   void *      freeq_sem_ptr;
+#define  FREEQ_RESID (freeq_sem_ptr)
+#endif
+
+#endif
+
 
 /* declare tasks which may need to be accessed by system code */
 extern   TK_OBJECT(to_pingcheck);
 extern   TK_OBJECT(to_netmain);
+extern   TK_OBJECT(to_emailer);
 extern   TK_OBJECT(to_ftpclnt);
 
 
 /* map TK_ macros to CHRONOS: */
 #define  TK_BLOCK()          OSTaskSuspend(OS_PRIO_SELF)
-
+extern OsSemaphore rcvdq_sem_ptr;
 #define  TK_NETRX_BLOCK()    int status = osWaitForSemaphore(&rcvdq_sem_ptr, TPS)
 
 #define  TK_SLEEP(count)     osDelayTask(count + 1)
@@ -87,6 +137,7 @@ void tk_yield(void);
  * ChronOS enable interrupts on us.
  */
 #define  SignalPktDemux()     osReleaseSemaphore(&rcvdq_sem_ptr)
+#define  SignalEmailTask()    OSTaskResume(to_emailer)
 #define  SignalFtpClient()    OSTaskResume(to_ftpclnt.prio)
 
 #endif  /* TK_CRNOS_H */

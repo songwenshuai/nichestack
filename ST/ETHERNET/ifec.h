@@ -59,7 +59,7 @@ typedef __start_packed struct
  *
  ******************************************************************************/
 
-int eth_dev_init(int iface);
+int iniche_devices_init(int iface);
 int close (int fd);
 int fcntl (int file, int cmd, ...);
 int read (int fd, void *ptr, size_t len);

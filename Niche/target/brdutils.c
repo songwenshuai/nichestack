@@ -22,23 +22,34 @@
  * 
  */
 
-/* Nichestack definitions */
-#include  <stm32h7xx_hal.h>
-
-/* Includes ------------------------------------------------------------------*/
-#include "cpu.h"
-
-#include "ipport.h"
-#include "libport.h"
-#include "osport.h"
-#include "tcpport.h"
-#include "net.h"
-#include "in_utils.h"
-#include "memwrap.h"
-#include "ifec.h"
 #include "bsp_usart.h"
+#include "ipport.h"
+#include "osport.h"
 
-extern void sem_create(void);
+#if 0
+#include "fcntl.h"
+#include "unistd.h"
+#include "sys/alt_irq.h"
+#endif
+
+#ifdef UCOS_II_
+#include "includes.h"  /* Standard includes for uC/OS-II */
+#endif
+
+void dtrap(void);
+int  kbhit(void);
+int  getch(void);
+void clock_c(void);
+void clock_init(void);
+void cticks_hook(void);
+#ifdef USE_LCD
+extern void update_display(void);
+#endif
+
+int kb_last = EOF;
+
+void irq_Mask(void);
+void irq_Unmask(void);
 
 /*
  * Altera Niche Stack Nios port modification:
@@ -57,7 +68,7 @@ void iniche_init(void)
    mheap_init(HEAP_START, HEAP_SIZE);
    
    /* Created Sem */
-   sem_create();
+   alt_iniche_init();
 
    /* Start the Iniche-specific network tasks and initialize the network
      * devices.
@@ -73,7 +84,8 @@ void iniche_init(void)
 #endif /* !SUPERLOOP */
 
 /* dtrap() - function to trap to debugger */
-void dtrap(void)
+void
+dtrap(void)
 {
    printf("dtrap - needs breakpoint\n");
 }
@@ -86,7 +98,8 @@ void dtrap(void)
  *
  * RETURN: TRUE if a character is available, otherwise FALSE
  */
-int kbhit(void)
+int
+kbhit()
 {
   if(UART_RX_Empty(COM3))
   {
@@ -103,7 +116,9 @@ int kbhit(void)
  *
  * RETURNS: int              value of character read or -1 if no character
  */
-int getch(void)
+
+int 
+getch()
 {
 #if 1 /* 从串口接收FIFO中取1个数据, 只有取到数据才返回 */
    unsigned char chr;
@@ -169,7 +184,8 @@ void clock_c(void)
  * Use the uCOS-II/Altera HAL BSP's timer and scale cticks as per TPS.
  */
 
-void cticks_hook(void)
+void 
+cticks_hook(void)
 {
    if (cticks_initialized) 
    {
@@ -178,6 +194,9 @@ void cticks_hook(void)
       {
          cticks++;
          cticks_factor -= OS_TPS;
+#ifdef USE_LCD
+         update_display();
+#endif
       }
    }
 }
@@ -188,7 +207,11 @@ void cticks_hook(void)
 unsigned int irq_level = 0;
 
 /* Latch on to Altera's NIOS2 BSP */
-static OS_CPU_SR _cpu_statusreg;
+static OS_CPU_SR cpu_statusreg;
+
+#ifdef NOT_DEF
+#define IRQ_PRINTF   1
+#endif
 
 /* Disable Interrupts */
 
@@ -203,27 +226,29 @@ static OS_CPU_SR _cpu_statusreg;
  * From Section 2.2.3.1 on the NicheStack Handbook:
  * "Note that it is not sufficient to simply disable interrupts in 
  * ENTER_CRIT_SECTION() and enable them in EXIT_CRIT_SECTION()
- * because calls to ENTER_CRIT_SECTION() can be  nested."
+ * because calls to ENTER_CRIT_SECTION() can be nested."
  */
-void irq_Mask(void)
+void 
+irq_Mask(void)
 {
-   OS_CPU_SR cpu_statusreg_sr;
+   OS_CPU_SR local_cpu_statusreg;
 
-   cpu_statusreg_sr = OS_CPU_SR_Save();
+   local_cpu_statusreg = OS_CPU_SR_Save();
 
    if (++irq_level == 1)
    {
-      _cpu_statusreg = cpu_statusreg_sr;
+      cpu_statusreg = local_cpu_statusreg;
    }
 }
 
 
 /* Re-Enable Interrupts */
-void irq_Unmask(void)
+void 
+irq_Unmask(void)
 {
    if (--irq_level == 0)
    {
-      OS_CPU_SR_Restore(_cpu_statusreg);
+      OS_CPU_SR_Restore(cpu_statusreg);
    }
 }
 
